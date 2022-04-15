@@ -1,9 +1,24 @@
 version: '3.1'
 
 services:
+  
+  grafana:
+    image: grafana/grafana:7.4.3
+    ports:
+      - 0.0.0.0:8080:3000
+    volumes:
+      - grafana:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false    
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"        
 
   nodeexporter:
-    image: prom/node-exporter:v1.0.1
+    image: prom/node-exporter:v1.3.1
     deploy:
       mode: global
       restart_policy:
@@ -26,29 +41,36 @@ services:
       org.label-schema.group: "monitoring"
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.37.0
+    image: nazman/cadvisor:v0.37.0
+    hostname: '{{.Node.ID}}'
     deploy:
       mode: global
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
-        window: 120s
     volumes:
       - /:/rootfs:ro
-      - /var/run:/var/run:rw
+      - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
+      - /dev/disk/:/dev/disk:ro  
     networks:
       - monitor-net
-    labels:
-      org.label-schema.group: "monitoring"  
-      
+    ports:
+      - 8001:8080
+    labels: 
+      org.label-schema.group: "monitoring"
+
   prometheus:
-    image: prom/prometheus:v2.20.0
+    image: prom/prometheus:v2.33.1
     container_name: prometheus
+    deploy:
+      placement:
+        constraints:
+          - "node.labels.iscsi_active==yes"
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock,ro    
       - prometheus_config:/etc/prometheus
       - prometheus_data:/prometheus
     command:
@@ -69,15 +91,32 @@ networks:
   monitor-net:
   
 volumes:
-  prometheus_data:
+  prometheus_data:       
     driver: local
+    # Trying to use NFS as storage    
+    #driver_opts:
+    #  type: "nfs4"
+    #  o: "addr=192.168.2.56,rsize=32768,wsize=32768,timeo=300,tcp,rw,noatime"
+    #  device: ":/mnt/vm_pool/misc/prometheus_data"
     driver_opts:
-      type: "nfs"
-      o: "addr=192.168.2.56,rsize=32768,wsize=32768,timeo=300,tcp,rw,noatime"
-      device: ":/mnt/big_pool/misc/prometheus_data"      
+      o: bind
+      type: none
+      device: /data/prometheus_data
   prometheus_config:
     driver: local
     driver_opts:
-      type: "nfs"
+      type: "nfs4"
       o: "addr=192.168.2.56,rsize=32768,wsize=32768,timeo=300,tcp,rw,noatime"
-      device: ":/mnt/big_pool/misc/prometheus_config"
+      device: ":/mnt/vm_pool/misc/prometheus_config"
+  influx_db:
+    driver: local
+    driver_opts:
+      type: "nfs4"
+      o: "addr=192.168.2.56,rsize=32768,wsize=32768,timeo=300,tcp,rw,noatime"
+      device: ":/mnt/vm_pool/misc/influx_db"
+  grafana:
+    driver: local
+    driver_opts:
+      type: "nfs4"
+      o: "addr=192.168.2.56,rsize=32768,wsize=32768,timeo=300,tcp,rw,noatime"
+      device: ":/mnt/vm_pool/misc/grafana"
