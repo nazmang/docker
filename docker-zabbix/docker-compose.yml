@@ -4,6 +4,10 @@ services:
    
   postgres-zabbix:
     image: postgres:12-alpine
+    configs:
+      - source: postgres_config
+        target: /etc/postgresql/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf    
     deploy:
       replicas: 1
       restart_policy:
@@ -11,12 +15,32 @@ services:
       placement:
         constraints:
           - "node.platform.arch==x86_64"
+      resources:
+        limits:
+          cpus: '0.70'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M      
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s      
     env_file:
       - start.env       
+    environment:
+       POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
+       POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+    secrets:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD   
     ports:
       - target: 5432
         published: 5432
         mode: ingress
+    stop_grace_period: 1m
     volumes:
       - zabbix-db:/var/lib/postgresql/data
     networks:
@@ -24,12 +48,26 @@ services:
 
   zabbix-server:
     image: zabbix/zabbix-server-pgsql:5.4-alpine-latest
-    environment:
-      DB_SERVER_HOST: postgres-zabbix
-      DB_SERVER_PORT: 5432
     deploy:
       restart_policy:
         condition: on-failure
+      resources:
+        limits:
+          cpus: '0.70'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M   
+    env_file:
+      - start.env       
+    secrets:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD   
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 20000
+        hard: 40000    
     env_file:
       - start.env      
     ports:
@@ -38,6 +76,18 @@ services:
       - zabbix-net  
     depends_on:
       - postgres-zabbix
+    stop_grace_period: 30s
+    sysctls:
+      - net.ipv4.ip_local_port_range=1024 65000
+      - net.ipv4.conf.all.accept_redirects=0
+      - net.ipv4.conf.all.secure_redirects=0
+      - net.ipv4.conf.all.send_redirects=0
+    labels:
+      com.zabbix.description: "Zabbix server with PostgreSQL database support"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "zabbix-server"
+      com.zabbix.dbtype: "pgsql"
+      com.zabbix.os: "alpine"    
 
   zabbix-web:
     image: zabbix/zabbix-web-nginx-pgsql:5.4-alpine-latest
@@ -48,25 +98,47 @@ services:
       PHP_TZ: Europe/Kiev
     env_file:
       - start.env  
+    secrets:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD   
     deploy:
-      mode: global
-      placement:
-        constraints:
-          - node.role == manager
       restart_policy:
         condition: on-failure
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 10s
+    sysctls:
+      - net.core.somaxconn=65535
     ports:
       - target: 8443
         published: 18443
-        mode: host
+        mode: ingress
       - target: 8080
         published: 18080
-        mode: host
+        mode: ingress
     depends_on:
       - zabbix-server
     networks:
       - zabbix-net  
-      
+    labels:
+      com.zabbix.description: "Zabbix frontend on Nginx web-server with PostgreSQL database support"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "zabbix-frontend"
+      com.zabbix.webserver: "nginx"
+      com.zabbix.dbtype: "pgsql"
+      com.zabbix.os: "alpine" 
+
 networks:
   zabbix-net:
     driver: overlay       
@@ -79,5 +151,14 @@ volumes:
     driver_opts:
       type: "nfs"
       o: "addr=192.168.2.56,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
-      device: ":/mnt/vm_pool/misc/zabbix_db"  
-  
+      device: ":/mnt/trash_pool/misc/zabbix_db"  
+ 
+secrets:      
+  POSTGRES_USER:
+    file: ./.POSTGRES_USER
+  POSTGRES_PASSWORD:
+    file: ./.POSTGRES_PASSWORD
+
+configs:    
+  postgres_config:
+    file: ./postgresql.conf       
