@@ -1,7 +1,7 @@
 version: '3.3'
 services:
  transmission:
-  image: haugene/transmission-openvpn:3.7.1
+  image: haugene/transmission-openvpn:5.2
   ports:
     - "9091:9091"
     - "1888:1888"
@@ -13,7 +13,6 @@ services:
     - Serials:/Serials
     - transmission_data:/data
     - transmission_config:/config
-    - ${PWD}/client.ovpn:/etc/openvpn/custom/default.ovpn
   environment:
     - PEER_DNS=true
     - CREATE_TUN_DEVICE=true
@@ -32,40 +31,43 @@ services:
     interval: 120s
     timeout: 30s
     retries: 5     
-  deploy:
-    placement:
-        constraints:
-          - "node.role==manager"
-    restart_policy:
-       condition: on-failure
+  restart: always
+
+networks:
+  default:      
+    ipam:
+      driver: default
+      config:
+        - subnet: "10.123.234.0/24"
+
 volumes:
   Install:
     driver: local 
     driver_opts:
       type: "nfs"
-      o: "addr=192.168.2.56,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
       device: ":/mnt/big_pool/Install"
   Movies:
     driver: local 
     driver_opts:
       type: "nfs"
-      o: "addr=192.168.2.56,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
       device: ":/mnt/trash_pool/Movies"
   Serials:
     driver: local 
     driver_opts:
       type: "nfs"
-      o: "addr=192.168.2.56,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
       device: ":/mnt/trash_pool/old_data/f/Acht"
   transmission_data:
     driver: local 
     driver_opts:
       type: "nfs"
-      o: "addr=192.168.2.56,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
       device: ":/mnt/trash_pool/old_data/"
   transmission_config:
     driver: local 
     driver_opts:
       type: "nfs"
-      o: "addr=192.168.2.56,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime,nfsvers=4"
       device: ":/mnt/trash_pool/old_data/.config"
