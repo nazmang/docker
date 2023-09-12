@@ -4,10 +4,10 @@ services:
    
   postgres-zabbix:
     image: postgres:12-alpine
-    configs:
-      - source: postgres_config
-        target: /etc/postgresql/postgresql.conf
-    command: postgres -c config_file=/etc/postgresql/postgresql.conf    
+    #    configs:
+    #  - source: postgres_config
+    #    target: /etc/postgresql/postgresql.conf
+    #command: postgres -c config_file=/etc/postgresql/postgresql.conf    
     deploy:
       replicas: 1
       restart_policy:
@@ -17,13 +17,13 @@ services:
           - "node.platform.arch==x86_64"
       resources:
         limits:
-          cpus: '0.70'
-          memory: 1G
+          cpus: '1.0'
+          memory: 2G
         reservations:
           cpus: '0.5'
-          memory: 512M      
+          memory: 1G      
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
+      test: ["CMD-SHELL", "pg_isready -U $$(cat `echo $$POSTGRES_USER_FILE`)" ]
       interval: 30s
       timeout: 60s
       retries: 5
@@ -53,8 +53,8 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: '0.70'
-          memory: 512M
+          cpus: '1.0'
+          memory: 1G
         reservations:
           cpus: '0.5'
           memory: 256M   
@@ -106,11 +106,11 @@ services:
         condition: on-failure
       resources:
         limits:
-          cpus: '0.5'
-          memory: 256M
+          cpus: '1.0'
+          memory: 1.5G
         reservations:
-          cpus: '0.25'
-          memory: 128M
+          cpus: '0.7'
+          memory: 700M
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 10s
@@ -150,7 +150,7 @@ volumes:
     driver: local
     driver_opts:
       type: "nfs"
-      o: "addr=192.168.2.56,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      o: "addr=nas,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
       device: ":/mnt/trash_pool/misc/zabbix_db"  
  
 secrets:      
@@ -159,6 +159,3 @@ secrets:
   POSTGRES_PASSWORD:
     file: ./.POSTGRES_PASSWORD
 
-configs:    
-  postgres_config:
-    file: ./postgresql.conf       

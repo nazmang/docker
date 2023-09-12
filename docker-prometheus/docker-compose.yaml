@@ -63,12 +63,12 @@ services:
       org.label-schema.group: "monitoring"
 
   prometheus:
-    image: prom/prometheus:v2.33.1
+    image: prom/prometheus:v2.34.0
     container_name: prometheus
     deploy:
       placement:
         constraints:
-          - "node.labels.iscsi_active==yes"
+          - "node.role==worker"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock,ro    
       - prometheus_config:/etc/prometheus
@@ -94,29 +94,25 @@ volumes:
   prometheus_data:       
     driver: local
     # Trying to use NFS as storage    
-    #driver_opts:
-    #  type: "nfs4"
-    #  o: "addr=192.168.2.56,rsize=32768,wsize=32768,timeo=300,tcp,rw,noatime"
-    #  device: ":/mnt/vm_pool/misc/prometheus_data"
     driver_opts:
-      o: bind
-      type: none
-      device: /data/prometheus_data
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime,nfsvers=4"
+      device: ":/mnt/vm_pool/misc/prometheus_data"
   prometheus_config:
     driver: local
     driver_opts:
-      type: "nfs4"
-      o: "addr=192.168.2.56,rsize=32768,wsize=32768,timeo=300,tcp,rw,noatime"
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime,nfsvers=4"
       device: ":/mnt/vm_pool/misc/prometheus_config"
   influx_db:
     driver: local
     driver_opts:
-      type: "nfs4"
-      o: "addr=192.168.2.56,rsize=32768,wsize=32768,timeo=300,tcp,rw,noatime"
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime,nfsvers=4"
       device: ":/mnt/vm_pool/misc/influx_db"
   grafana:
     driver: local
     driver_opts:
-      type: "nfs4"
-      o: "addr=192.168.2.56,rsize=32768,wsize=32768,timeo=300,tcp,rw,noatime"
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime,nfsvers=4"
       device: ":/mnt/vm_pool/misc/grafana"
