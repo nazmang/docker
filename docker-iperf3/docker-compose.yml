@@ -1,0 +1,13 @@
+version: "3"
+
+services:
+  iperf3:
+    image: networkstatic/iperf3
+    command: -s 
+    ports:
+      - "5201:5201/tcp"
+    environment:
+      TZ: 'Europe/Kiev'
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped

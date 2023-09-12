@@ -1,0 +1,81 @@
+version: '3.7'
+
+services:
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    user: root
+    ports:
+      - 8081:8080
+      - 50000:50000
+    networks:
+      - jenkins_net      
+    environment:
+      - VIRTUAL_HOST=${VIRTUAL_HOST}
+      - LETSENCRYPT_HOST=${LETSENCRYPT_HOST}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - VIRTUAL_PORT=8080    
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      placement:
+        constraints:
+          - "node.role==worker"
+
+  etcd:
+    image: docker.io/bitnami/etcd:3.5
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379
+    ports:
+      - 2379:2379
+      - 2380:2380
+    networks:
+      - jenkins_net      
+    volumes:
+      - etcd_data:/bitnami/etcd
+   
+  jenkins-agent:
+     image: jenkins/agent:latest-alpine-jdk11
+     command: ["java", "-jar", "/usr/share/jenkins/slave.jar", "-jnlpUrl", "http://jenkins:8080/computer/jenkins%2Dagent/jenkins-agent.jnlp", "-secret",  "@/run/secrets/jenkins_secret"]
+     init: true
+     stdin_open: true
+     tty: true        
+     networks:
+      - jenkins_net      
+     environment:
+      - 'JENKINS_URL=http://jenkins:8081'
+     volumes:
+      - /etc/localtime:/etc/localtime:ro
+     secrets:
+      - jenkins_secret
+     deploy:
+       placement:
+         constraints:
+           - "node.role==worker"
+  
+secrets:
+  jenkins_secret:
+    file: ./secret-file
+        
+networks:
+  jenkins_net:      
+    driver: overlay
+    attachable: true 
+
+volumes:
+  jenkins_home:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime"
+      device: ":/mnt/vm_pool/misc/jenkins_home/jenkins_local"          
+  etcd_data:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,rw,noatime,nfsvers=4"
+      device: ":/mnt/trash_pool/misc/etcd_data"          
