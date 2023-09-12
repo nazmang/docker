@@ -1,0 +1,38 @@
+version: '3.5'
+services:
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    network_mode: 'host'
+    volumes:
+      - config:/config
+      - cache:/cache
+      - Movies:/media
+      - Serials:/Serials
+    restart: 'unless-stopped'
+volumes:
+  Movies:
+    driver: local 
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      device: ":/mnt/trash_pool/Movies"
+  Serials:
+    driver: local 
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      device: ":/mnt/trash_pool/old_data/f/Acht"
+  cache:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /srv/jellyfin/cache
+  config:
+    driver: local 
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime,nfsvers=4"
+      device: ":/mnt/trash_pool/old_data/.config"
+
