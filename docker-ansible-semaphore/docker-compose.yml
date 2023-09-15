@@ -1,0 +1,37 @@
+services:
+  
+  postgres:
+    restart: unless-stopped
+    image: postgres:14
+    hostname: postgres
+    volumes: 
+      - semaphore-db:/var/lib/postgresql/data
+    env_file:
+      - .db.env
+
+  semaphore:
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+    image: semaphoreui/semaphore:v2.8.90
+    volumes:
+      - semaphore-data:/etc/semaphore
+    depends_on:
+      - postgres # for postgres, change to: postgres
+    env_file:
+      - .semaphore.env  
+
+ 
+volumes:
+  semaphore-db: 
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      device: ":/mnt/trash_pool/misc/semaphore-db" 
+  semaphore-data: 
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      device: ":/mnt/trash_pool/misc/semaphore-data"     
