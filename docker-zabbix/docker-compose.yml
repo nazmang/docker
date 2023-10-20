@@ -52,7 +52,8 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-      constraints:
+      placement:  
+        constraints:
           - node.platform.arch==x86_64
           - node.role == worker  
       resources:
@@ -106,7 +107,8 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-      constraints:
+      placement:  
+        constraints:
           - node.platform.arch==x86_64
           - node.role == manager  
       resources:
