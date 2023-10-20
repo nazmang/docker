@@ -15,13 +15,13 @@ volumes:
     driver: local 
     driver_opts:
       type: "nfs"
-      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      o: "addr=nas,timeo=300,noatime"
       device: ":/mnt/trash_pool/Movies"
   Serials:
     driver: local 
     driver_opts:
       type: "nfs"
-      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      o: "addr=nas,timeo=300,noatime"
       device: ":/mnt/trash_pool/old_data/f/Acht"
   cache:
     driver: local
@@ -33,6 +33,6 @@ volumes:
     driver: local 
     driver_opts:
       type: "nfs"
-      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime,nfsvers=4"
+      o: "addr=nas,timeo=300,noatime,nfsvers=4"
       device: ":/mnt/trash_pool/old_data/.config"
 
