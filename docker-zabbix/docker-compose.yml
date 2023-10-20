@@ -14,7 +14,8 @@ services:
         condition: on-failure
       placement:
         constraints:
-          - "node.platform.arch==x86_64"
+          - node.platform.arch==x86_64
+          - node.role == worker
       resources:
         limits:
           cpus: '1.0'
@@ -51,6 +52,9 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
+      constraints:
+          - node.platform.arch==x86_64
+          - node.role == worker  
       resources:
         limits:
           cpus: '1.0'
@@ -102,6 +106,9 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
+      constraints:
+          - node.platform.arch==x86_64
+          - node.role == manager  
       resources:
         limits:
           cpus: '1.0'
