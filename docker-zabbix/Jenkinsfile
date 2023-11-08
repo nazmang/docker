@@ -1,0 +1,62 @@
+pipeline {
+    agent {label 'jnlp-agent-docker'}
+    
+    environment {
+        DOCKER_STACK_NAME = 'zabbix' 
+        DOCKER_COMPOSE_DIR = 'docker-zabbix' // Path to docker-compose.yml
+        DOCKER_SWARM_MANAGER_IP = '192.168.150.58'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'master',
+                url: 'https://github.com/nazmang/docker.git'
+            }
+            
+        }
+        stage('Create Files') {
+            steps {
+                script {
+                    def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
+                    // Create .POSTGRES_USER and .POSTGRES_PASSWORD files in DOCKER_COMPOSE_DIR
+                    writeFile file: "${composeDir}/.POSTGRES_USER", text: env.POSTGRES_USER
+                    writeFile file: "${composeDir}/.POSTGRES_PASSWORD", text: env.POSTGRES_PASSWORD
+
+                    // Create start.env file with parameters in DOCKER_COMPOSE_DIR
+                    def startEnv = """
+                    POSTGRES_DB=${params.POSTGRES_DB}
+                    POSTGRES_USER_FILE=/run/secrets/POSTGRES_USER
+                    POSTGRES_PASSWORD_FILE=/run/secrets/POSTGRES_PASSWORD
+                    DB_SERVER_HOST=postgres-zabbix
+                    DB_SERVER_PORT=5432
+                    ZBX_SERVER_HOST=zabbix-server
+                    ZBX_STARTVMWARECOLLECTORS=1
+                    PHP_TZ=Europe/Kiev
+                    """
+                    writeFile file: "${composeDir}/start.env", text: startEnv
+                }
+            }
+        }
+        stage('Deploy stack'){            
+            steps {                
+                script {
+                    
+                    dir("${env.DOCKER_COMPOSE_DIR}") {
+                        sh "docker stack rm ${env.DOCKER_STACK_NAME}"
+                        sh "docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:2376 stack deploy -c docker-compose.yml ${env.DOCKER_STACK_NAME}" 
+                    }
+                }
+            }
+        }
+        
+    }
+    post {
+        always { 
+            cleanWs()
+        }
+      //  success {}
+      //  failure {}
+      //  unstable{}
+    }
+}
