@@ -108,9 +108,11 @@ services:
       restart_policy:
         condition: on-failure
       placement:  
+        max_replicas_per_node: 1
         constraints:
           - node.platform.arch==x86_64
           - node.role == manager  
+      replicas: 1    
       resources:
         limits:
           cpus: '1.0'
