@@ -165,6 +165,8 @@ volumes:
 secrets:      
   POSTGRES_USER:
     file: ./.POSTGRES_USER
+    name: POSTGRES_USER_v${CONF_VERSION}
   POSTGRES_PASSWORD:
     file: ./.POSTGRES_PASSWORD
+    name: POSTGRES_PASSWORD_v${CONF_VERSION}
 
