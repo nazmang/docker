@@ -5,6 +5,7 @@ pipeline {
         DOCKER_STACK_NAME = 'zabbix' 
         DOCKER_COMPOSE_DIR = 'docker-zabbix' // Path to docker-compose.yml
         DOCKER_SWARM_MANAGER_IP = '192.168.150.58'
+        DOCKER_SWARM_MANAGER_PORT ='2376'
     }
     
     stages {
@@ -16,6 +17,9 @@ pipeline {
             
         }
         stage('Create Files') {
+            when {
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+            }
             steps {
                 script {
                     def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
@@ -38,13 +42,18 @@ pipeline {
                 }
             }
         }
-        stage('Deploy stack'){            
+        stage('Deploy stack'){    
+            when {
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+            }        
             steps {                
                 script {
                     
                     dir("${env.DOCKER_COMPOSE_DIR}") {
-                        sh "docker stack rm ${env.DOCKER_STACK_NAME}"
-                        sh "docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:2376 stack deploy -c docker-compose.yml ${env.DOCKER_STACK_NAME}" 
+                        sh "docker service rm ${env.DOCKER_STACK_NAME}_postgres-zabbix"
+                        sh "docker secret rm ${env.DOCKER_STACK_NAME}_POSTGRES_PASSWORD"
+                        sh "docker secret rm ${env.DOCKER_STACK_NAME}_POSTGRES_USER"
+                        sh "docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:${DOCKER_SWARM_MANAGER_PORT} stack deploy -c docker-compose.yml ${env.DOCKER_STACK_NAME}" 
                     }
                 }
             }
