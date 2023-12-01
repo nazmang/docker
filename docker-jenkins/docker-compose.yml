@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3.8'
 
 services:
 
@@ -39,7 +39,7 @@ services:
       - etcd_data:/bitnami/etcd
    
   jenkins-agent:
-     image: jenkins/agent:latest-alpine-jdk11
+     image: jenkins/agent:latest-alpine-jdk17
      command: ["java", "-jar", "/usr/share/jenkins/slave.jar", "-jnlpUrl", "http://jenkins:8080/computer/jenkins%2Dagent/jenkins-agent.jnlp", "-secret",  "@/run/secrets/jenkins_secret"]
      init: true
      stdin_open: true
