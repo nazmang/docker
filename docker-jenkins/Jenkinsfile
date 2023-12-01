@@ -5,10 +5,11 @@ pipeline {
         DOCKER_STACK_NAME = 'jenkins' 
         DOCKER_COMPOSE_DIR = 'docker-jenkins' // Path to docker-compose.yml
         DOCKER_SWARM_MANAGER_IP = '192.168.150.58'
+        DOCKER_SWARM_MANAGER_PORT = '2376'
         VIRTUAL_HOST='your-domain.com'
-        LETSENCRYPT_HOST='your-domain.com'
-        LETSENCRYPT_EMAIL="your@email.com"
         VIRTUAL_PORT=8080 
+        LETSENCRYPT_HOST='your-domain.com'
+        LETSENCRYPT_EMAIL="your@email.com"        
     }
     
     stages {
@@ -42,8 +43,9 @@ pipeline {
                 script {
                     
                     dir("${env.DOCKER_COMPOSE_DIR}") {
-                        sh "docker stack rm ${env.DOCKER_STACK_NAME}"
-                        sh "docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:2376 stack deploy -c docker-compose.yml ${env.DOCKER_STACK_NAME}" 
+                        sh "docker service rm ${env.DOCKER_STACK_NAME}_jenkins-agent"
+                        sh "docker secret rm ${env.DOCKER_STACK_NAME}_jenkins_secret"
+                        sh "docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:${DOCKER_SWARM_MANAGER_PORT} stack deploy -c docker-compose.yml ${env.DOCKER_STACK_NAME}" 
                     }
                 }
             }

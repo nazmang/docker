@@ -56,6 +56,9 @@ services:
        placement:
          constraints:
            - "node.role==worker"
+       update_config:
+        delay: 10s
+        order: start-first    
   
 secrets:
   jenkins_secret:
