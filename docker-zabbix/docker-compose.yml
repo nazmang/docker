@@ -47,6 +47,32 @@ services:
     networks:
       - zabbix-net
 
+  postgres-backup:
+    image: martlark/pg_dump:14.2
+    deploy:
+      placement:
+        constraints:
+          - node.platform.arch==x86_64
+          - node.role == worker
+    networks:
+      - zabbix-net  
+    depends_on:
+      - postgres-zabbix
+    env_file:
+      - start.env  
+    environment:
+      PGUSER: /run/secrets/POSTGRES_USER
+      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+      PGHOST: postgres-zabbix
+      PGPORT: 5432
+      CRON_SCHEDULE: 0 3 * * * # Every day at 3am
+      RETAIN_COUNT: 3 # Keep this number of backups
+    secrets:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD  
+    volumes:
+      - zabbix-db-backup:/dump    
+
   zabbix-server:
     image: zabbix/zabbix-server-pgsql:alpine-6.4-latest
     deploy:
@@ -161,6 +187,12 @@ volumes:
       type: "nfs"
       o: "addr=nas,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
       device: ":/mnt/trash_pool/misc/zabbix_db_new"  
+  zabbix-db-backup:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+      device: ":/mnt/big_pool/backup/zabbix_db"
  
 secrets:      
   POSTGRES_USER:
