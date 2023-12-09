@@ -63,7 +63,7 @@ pipeline {
         }
         success {
             // Cleanup orphaned secrets
-            sh "docker secret rm $(docker secret ls -q) || true"
+            sh "docker secret rm \$(docker secret ls -q) || true"
         }
       //  failure {}
       //  unstable{}
