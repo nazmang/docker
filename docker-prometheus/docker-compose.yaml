@@ -3,7 +3,7 @@ version: '3.1'
 services:
   
   grafana:
-    image: grafana/grafana:7.4.3
+    image: grafana/grafana:10.2.2
     ports:
       - 0.0.0.0:8080:3000
     volumes:
@@ -12,13 +12,19 @@ services:
       - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false    
+    deploy:
+      placement:
+        constraints:
+          - "node.role==worker"  
     networks:
       - monitor-net
     labels:
       org.label-schema.group: "monitoring"        
 
   nodeexporter:
-    image: prom/node-exporter:v1.3.1
+    image: prom/node-exporter:v1.7.0
+    environment:
+      - NODE_ID={{.Node.ID}}
     deploy:
       mode: global
       restart_policy:
@@ -26,15 +32,22 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M  
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+      - /etc/hostname:/etc/nodename
     command:
       - '--path.procfs=/host/proc'
       - '--path.rootfs=/rootfs'
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--no-collector.ipvs'
     networks:
       - monitor-net
     labels:
@@ -49,6 +62,11 @@ services:
         condition: on-failure
         delay: 5s
         max_attempts: 3
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M    
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -63,14 +81,13 @@ services:
       org.label-schema.group: "monitoring"
 
   prometheus:
-    image: prom/prometheus:v2.34.0
+    image: prom/prometheus:v2.48.0
     container_name: prometheus
     deploy:
       placement:
         constraints:
-          - "node.role==worker"
+          - "node.role==manager"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock,ro    
       - prometheus_config:/etc/prometheus
       - prometheus_data:/prometheus
     command:
@@ -78,14 +95,37 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
+      - '--storage.tsdb.retention.time=2d'
       - '--web.enable-lifecycle'
     ports:
       - 9090:9090
     networks:
       - monitor-net
     labels:
-      org.label-schema.group: "monitoring"    
+      org.label-schema.group: "monitoring" 
+
+  dockerproxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:latest
+    container_name: dockerproxy
+    deploy:
+      placement:
+        constraints:
+          - "node.role==manager"
+    environment:
+        - CONTAINERS=1 # Allow access to viewing containers
+        - SERVICES=1 # Allow access to viewing services (necessary when using Docker Swarm)
+        - TASKS=1 # Allow access to viewing tasks (necessary when using Docker Swarm)
+        - NODES=1 # Allow access to viewing nodes (necessary when using Docker Swarm)
+        - POST=0 # Disallow any POST operations (effectively read-only)
+    ports:
+        - 127.0.0.1:2375:2375
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock:ro # Mounted as read-only
+    restart: unless-stopped
+    networks:
+      - monitor-net 
+    labels:
+      org.label-schema.group: "monitoring"          
       
 networks:
   monitor-net:
