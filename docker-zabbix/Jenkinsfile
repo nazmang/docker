@@ -50,7 +50,10 @@ pipeline {
                 script {
                     
                     dir("${env.DOCKER_COMPOSE_DIR}") {
-                        sh "CONF_VERSION=${BUILD_NUMBER} docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:${DOCKER_SWARM_MANAGER_PORT} stack deploy -c docker-compose.yml ${env.DOCKER_STACK_NAME}" 
+                        sh  """
+                                CONF_VERSION=${BUILD_NUMBER} docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:${DOCKER_SWARM_MANAGER_PORT} \
+                                stack deploy -c docker-compose.yml ${env.DOCKER_STACK_NAME}
+                            """ 
                     }
                 }
             }
@@ -63,7 +66,12 @@ pipeline {
         }
         success {
             // Cleanup orphaned secrets
-            sh "docker secret rm \$(docker secret ls -q) || true"
+            //sh "docker secret rm \$(docker secret ls -q) || true"
+            sh  """
+                    docker secret ls --format '{{.Name}}'  \
+                    | awk '/^POSTGRES_/ && !/^(POSTGRES_PASSWORD_v${BUILD_NUMBER}|POSTGRES_USER_v${BUILD_NUMBER})\$/{print}' \
+                    | xargs -I {} docker secret rm {} || true
+                """
         }
       //  failure {}
       //  unstable{}
