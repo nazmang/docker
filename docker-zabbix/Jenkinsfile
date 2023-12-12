@@ -66,7 +66,6 @@ pipeline {
         }
         success {
             // Cleanup orphaned secrets
-            //sh "docker secret rm \$(docker secret ls -q) || true"
             sh  """
                     docker secret ls --format '{{.Name}}'  \
                     | awk '/^POSTGRES_/ && !/^(POSTGRES_PASSWORD_v${BUILD_NUMBER}|POSTGRES_USER_v${BUILD_NUMBER})\$/{print}' \
