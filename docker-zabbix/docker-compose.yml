@@ -76,10 +76,17 @@ services:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     ports:
       - 9187:9187
-    env_file:
-      - start.env  
     networks:
-      - zabbix-net           
+      - zabbix-net
+    depends_on:
+      - postgres-zabbix 
+    environment:
+      DATA_SOURCE_USER_FILE: /run/secrets/POSTGRES_USER
+      DATA_SOURCE_PASS_FILE: /run/secrets/POSTGRES_PASSWORD 
+      DATA_SOURCE_URI: postgres-zabbix?sslmode=disable
+    secrets:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD               
 
   zabbix-server:
     image: zabbix/zabbix-server-pgsql:alpine-6.4-latest
