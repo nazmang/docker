@@ -61,7 +61,6 @@ services:
     env_file:
       - start.env  
     environment:
-      PGUSER: /run/secrets/POSTGRES_USER
       POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
       PGHOST: postgres-zabbix
       PGPORT: 5432
@@ -72,6 +71,15 @@ services:
       - POSTGRES_PASSWORD  
     volumes:
       - zabbix-db-backup:/dump    
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    ports:
+      - 9187:9187
+    env_file:
+      - start.env  
+    networks:
+      - zabbix-net           
 
   zabbix-server:
     image: zabbix/zabbix-server-pgsql:alpine-6.4-latest
@@ -84,11 +92,11 @@ services:
           - node.role == worker  
       resources:
         limits:
-          cpus: '1.0'
+          cpus: '1.5'
           memory: 1G
         reservations:
-          cpus: '0.5'
-          memory: 256M   
+          cpus: '0.75'
+          memory: 512M   
     env_file:
       - start.env       
     secrets:

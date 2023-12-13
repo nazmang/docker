@@ -37,6 +37,8 @@ pipeline {
                     ZBX_SERVER_HOST=zabbix-server
                     ZBX_STARTVMWARECOLLECTORS=1
                     PHP_TZ=Europe/Kiev
+                    PGUSER=${param.POSTGRES_USER}
+                    DATA_SOURCE_NAME='postgresql://${param.POSTGRES_USER}:${param.POSTGRES_PASSWORD}@postgres-zabbix:5432/${params.POSTGRES_DB}?sslmode=disable'
                     """
                     writeFile file: "${composeDir}/start.env", text: startEnv
                 }
