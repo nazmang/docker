@@ -50,6 +50,7 @@ services:
       - '--no-collector.ipvs'
     networks:
       - monitor-net
+    network_mode: host    
     labels:
       org.label-schema.group: "monitoring"
 
@@ -75,8 +76,9 @@ services:
       - /dev/disk/:/dev/disk:ro  
     networks:
       - monitor-net
+    network_mode: host    
     ports:
-      - 8001:8080
+      - 8001:8080    
     labels: 
       org.label-schema.group: "monitoring"
 
