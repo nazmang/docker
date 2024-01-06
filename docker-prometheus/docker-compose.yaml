@@ -50,7 +50,6 @@ services:
       - '--no-collector.ipvs'
     networks:
       - monitor-net
-    network_mode: host    
     labels:
       org.label-schema.group: "monitoring"
 
@@ -76,7 +75,6 @@ services:
       - /dev/disk/:/dev/disk:ro  
     networks:
       - monitor-net
-    network_mode: host    
     ports:
       - 8001:8080    
     labels: 
@@ -128,6 +126,30 @@ services:
       - monitor-net 
     labels:
       org.label-schema.group: "monitoring"          
+
+
+  alertmanager:
+    image: quay.io/prometheus/alertmanager:v0.26.0
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    volumes:
+      - alertmanager:/alertmanager
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - "node.role == manager"
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M      
+    networks:
+      - monitor-net 
+    labels:
+      org.label-schema.group: "monitoring"          
       
 networks:
   monitor-net:
@@ -135,7 +157,6 @@ networks:
 volumes:
   prometheus_data:       
     driver: local
-    # Trying to use NFS as storage    
     driver_opts:
       type: "nfs"
       o: "addr=nas,tcp,rw,noatime,nfsvers=4"
@@ -158,3 +179,9 @@ volumes:
       type: "nfs"
       o: "addr=nas,tcp,rw,noatime,nfsvers=4"
       device: ":/mnt/vm_pool/misc/grafana"
+  alertmanager:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime,nfsvers=3"
+      device: ":/mnt/vm_pool/misc/alertmanager"
