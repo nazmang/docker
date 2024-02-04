@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   app:
-    image: 'jc21/nginx-proxy-manager:2'
+    image: 'jc21/nginx-proxy-manager:2.11.1'
     restart: unless-stopped
     ports:
       - '80:80'
@@ -9,6 +9,7 @@ services:
       - '443:443'
     volumes:
       - data:/data
+      - letsencrypt:/etc/letsencrypt  
 
 volumes:
   data:
@@ -17,3 +18,9 @@ volumes:
       type: "nfs"
       o: "addr=nas,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime,nolock"
       device: ":/mnt/vm_pool/misc/nginx-proxymgr-data"
+  letsencrypt:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime,nolock"
+      device: ":/mnt/vm_pool/misc/nginx-proxymgr-data/letsencrypt"
