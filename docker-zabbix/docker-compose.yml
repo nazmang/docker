@@ -4,25 +4,25 @@ services:
    
   postgres-zabbix:
     image: postgres:14-alpine
-    #    configs:
-    #  - source: postgres_config
-    #    target: /etc/postgresql/postgresql.conf
-    #command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    configs:
+     - source: postgres_config
+       target: /etc/postgresql/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure
+        condition: any
       placement:
         constraints:
           - node.platform.arch==x86_64
           - node.role == worker
       resources:
         limits:
-          cpus: '2.0'
+          cpus: '3.5'
           memory: 2G
         reservations:
-          cpus: '1.0'
-          memory: 1G
+          cpus: '2.0'
+          memory: 1.5G
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$(cat `echo $$POSTGRES_USER_FILE`)" ]
       interval: 30s
@@ -92,18 +92,18 @@ services:
     image: zabbix/zabbix-server-pgsql:alpine-6.4-latest
     deploy:
       restart_policy:
-        condition: on-failure
+        condition: any
       placement:  
         constraints:
           - node.platform.arch==x86_64
           - node.role == worker  
       resources:
         limits:
-          cpus: '1.5'
-          memory: 1G
+          cpus: '2.5'
+          memory: 1.5G
         reservations:
-          cpus: '0.75'
-          memory: 512M   
+          cpus: '1.5'
+          memory: 750M   
     env_file:
       - start.env       
     secrets:
@@ -132,6 +132,11 @@ services:
       com.zabbix.component: "zabbix-server"
       com.zabbix.dbtype: "pgsql"
       com.zabbix.os: "alpine"    
+    logging:
+      driver: gelf
+      options:
+        gelf-address: udp://gw.comintern.local:12201
+        tag: zabbix  
 
   zabbix-web:
     image: zabbix/zabbix-web-nginx-pgsql:6.4-alpine-latest
@@ -217,3 +222,8 @@ secrets:
     file: ./.POSTGRES_PASSWORD
     name: POSTGRES_PASSWORD_v${CONF_VERSION}
 
+configs:
+  postgres_config:
+    # external: true
+    file: ./postgresql.conf
+    name: postgres_config_v${CONF_VERSION}

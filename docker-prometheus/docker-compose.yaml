@@ -3,19 +3,24 @@ version: '3.1'
 services:
   
   grafana:
-    image: grafana/grafana:10.2.2
+    image: grafana/grafana:10.3.5
     ports:
-      - 0.0.0.0:8080:3000
+      - 3000:3000
     volumes:
       - grafana:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
-      - GF_USERS_ALLOW_SIGN_UP=false    
+      - GF_USERS_ALLOW_SIGN_UP=false   
     deploy:
       placement:
         constraints:
-          - "node.role==worker"  
+          - "node.role==worker"
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M      
     networks:
       - monitor-net
     labels:
@@ -49,13 +54,15 @@ services:
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
       - '--no-collector.ipvs'
     networks:
-      - monitor-net
+      - monitor-net    
+    ports:
+      - 9100:9100        
     labels:
       org.label-schema.group: "monitoring"
 
   cadvisor:
-    image: nazman/cadvisor:v0.37.0
-    hostname: '{{.Node.ID}}'
+    image: nazman/cadvisor:v0.49.1    
+    command: --logtostderr=true 
     deploy:
       mode: global
       restart_policy:
@@ -74,22 +81,31 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro  
     networks:
-      - monitor-net
+      - monitor-net     
     ports:
-      - 8001:8080    
+      - 8080:8080    
     labels: 
       org.label-schema.group: "monitoring"
 
   prometheus:
-    image: prom/prometheus:v2.48.0
+    image: prom/prometheus:v2.51.0
     container_name: prometheus
     deploy:
+      mode: replicated
+      replicas: 1
       placement:
         constraints:
           - "node.role==manager"
+      resources:
+        limits:
+          memory: 1.5G
+        reservations:
+          memory: 128M      
     volumes:
       - prometheus_config:/etc/prometheus
       - prometheus_data:/prometheus
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
+    user: 65534:999  
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -100,7 +116,7 @@ services:
     ports:
       - 9090:9090
     networks:
-      - monitor-net
+      - monitor-net    
     labels:
       org.label-schema.group: "monitoring" 
 
@@ -117,6 +133,9 @@ services:
         - TASKS=1 # Allow access to viewing tasks (necessary when using Docker Swarm)
         - NODES=1 # Allow access to viewing nodes (necessary when using Docker Swarm)
         - POST=0 # Disallow any POST operations (effectively read-only)
+        - SWARM=1
+        - NETWORKS=1
+        - VOLUMES=1
     ports:
         - 127.0.0.1:2375:2375
     volumes:
@@ -127,30 +146,32 @@ services:
     labels:
       org.label-schema.group: "monitoring"          
 
-
   alertmanager:
     image: quay.io/prometheus/alertmanager:v0.26.0
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
     volumes:
-      - alertmanager:/alertmanager
+      - alertmanager:/etc/alertmanager
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - "node.role == manager"
       resources:
         limits:
           memory: 128M
         reservations:
-          memory: 64M      
+          memory: 64M  
+    environment:
+      - SLACK_URL=${SLACK_URL:-https://hooks.slack.com/services/TOKEN}
+      - SLACK_CHANNEL=${SLACK_CHANNEL:-general}
+      - SLACK_USER=${SLACK_USER:-alertmanager}      
+    ports:
+      - 9093:9093          
     networks:
       - monitor-net 
     labels:
-      org.label-schema.group: "monitoring"          
-      
+      org.label-schema.group: "monitoring"   
+
 networks:
   monitor-net:
   
@@ -184,4 +205,4 @@ volumes:
     driver_opts:
       type: "nfs"
       o: "addr=nas,tcp,rw,noatime,nfsvers=3"
-      device: ":/mnt/vm_pool/misc/alertmanager"
+      device: ":/mnt/vm_pool/misc/alertmanager"    

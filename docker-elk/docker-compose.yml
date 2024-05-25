@@ -1,0 +1,225 @@
+version: "3.8"
+
+services:
+  # setup:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:7.17.19
+  #   volumes:
+  #     - certs:/usr/share/elasticsearch/config/certs
+  #     - setup-entrypoint:/setup-entrypoint:ro
+  #   user: "0"
+  #   networks:
+  #     - elk-net
+  #   environment:
+  #     ELASTIC_PASSWORD: ${ELASTIC_PASSWD:-password}
+  #     KIBANA_PASSWORD: ${KIBANA_PASSWD:-password}
+  #   entrypoint: ["/setup-entrypoint/entrypoint.sh"]
+  #   healthcheck:
+  #     test:
+  #       ["CMD-SHELL", "[ -f config/certs/elasticsearch01/elasticsearch01.crt ]"]
+  #     interval: 1s
+  #     timeout: 5s
+  #     retries: 120
+
+  elasticsearch01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.19
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 1G
+      placement:
+        constraints:
+          - node.role == worker
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    environment:
+      - node.name=elasticsearch01
+      - cluster.name=${CLUSTER_NAME:-docker-cluster}
+      - network.host=0.0.0.0
+      - discovery.type=single-node
+      # - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-password}
+      # - bootstrap.memory_lock=true
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/elasticsearch01/elasticsearch01.key
+      - xpack.security.http.ssl.certificate=certs/elasticsearch01/elasticsearch01.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/elasticsearch01/elasticsearch01.key
+      - xpack.security.transport.ssl.certificate=certs/elasticsearch01/elasticsearch01.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.license.self_generated.type=${LICENSE:-basic}
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - elk-net
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+      - elasticsearch-config:/usr/share/elasticsearch/config
+      - certs:/usr/share/elasticsearch/config/certs
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    labels:
+      co.elastic.logs/module: elasticsearch
+
+  # metricbeat01:
+  #  depends_on:
+  #    elasticsearch01:
+  #      condition: service_healthy
+  #    kibana:
+  #      condition: service_healthy
+  #  image: docker.elastic.co/beats/metricbeat:7.17.19
+  #  user: root
+  #  volumes:
+  #    - certs:/usr/share/metricbeat/certs
+  #    - metricbeatdata01:/usr/share/metricbeat/data
+  #    - "./metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro"
+  #    - "/var/run/docker.sock:/var/run/docker.sock:ro"
+  #    - "/sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro"
+  #    - "/proc:/hostfs/proc:ro"
+  #    - "/:/hostfs:ro"
+  #  environment:
+  #    - ELASTIC_USER=elastic
+  #    - ELASTIC_PASSWORD=${ELASTIC_PASSWD:-password}
+  #    - ELASTIC_HOSTS=https://elasticsearch01:9200
+  #    - KIBANA_HOSTS=http://kibana:5601
+  #    - LOGSTASH_HOSTS=http://logstash01:9600
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.17.19
+    depends_on:
+      - elasticsearch01
+      - kibana
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 512M
+      placement:
+        constraints:
+          - node.role == worker    
+    environment:
+      - xpack.monitoring.enabled=false
+      - ELASTIC_USER=elastic
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWD:-password}
+      - ELASTIC_HOSTS=https://elasticsearch01:9200
+    user: root
+    ports:
+      - "5000:5000/udp"
+      - "5000:5000/tcp"
+      - "5044:5044"
+      - "12201:12201/udp"
+    networks:
+      - elk-net
+    volumes:
+      - certs:/usr/share/logstash/certs
+      - logstash-config:/usr/share/logstash/config
+      - logstash-data:/usr/share/logstash/data
+    labels:
+      co.elastic.logs/module: logstash
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.19
+    depends_on:
+      - elasticsearch01
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 512M
+      # placement:
+      #   constraints:
+      #     - node.role == worker    
+    environment:
+      - SERVERNAME=kibana
+      - ELASTICSEARCH_HOSTS=https://elasticsearch01:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWD:-password}
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
+      - XPACK_SECURITY_ENCRYPTIONKEY=${ENCRYPTION_KEY:-c34d38b3a14956121ff2170e5030b471551370178f43e5626eec58b04a30fae2}
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${ENCRYPTION_KEY:-c34d38b3a14956121ff2170e5030b471551370178f43e5626eec58b04a30fae2}
+      - XPACK_REPORTING_ENCRYPTIONKEY=${ENCRYPTION_KEY:-c34d38b3a14956121ff2170e5030b471551370178f43e5626eec58b04a30fae2}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    ports:
+      - "5601:5601"
+    networks:
+      - elk-net
+    volumes:
+      - certs:/usr/share/kibana/config/certs
+      - kibana-data:/usr/share/kibana/data
+    labels:
+      co.elastic.logs/module: kibana
+
+networks:
+  elk-net:
+  default:
+    name: elastic
+    external: false
+
+volumes:
+  setup-entrypoint:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,tcp,ro,noatime,nfsvers=3"
+      device: ":/mnt/trash_pool/misc/elasticsearch-data/setup-entrypoint"
+  elasticsearch-config:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime,nfsvers=3"
+      device: ":/mnt/vm_pool/misc/elasticsearch-config"
+  elasticsearch-data:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime,nfsvers=4"
+      device: ":/mnt/trash_pool/misc/elasticsearch-data"
+  logstash-config:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime,nfsvers=3"
+      device: ":/mnt/vm_pool/misc/logstash-config"
+  certs:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime,nfsvers=3"
+      device: ":/mnt/vm_pool/misc/certs"
+  kibana-data:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime,nfsvers=4"
+      device: ":/mnt/vm_pool/misc/kibana-data"
+  # metricbeatdata01:
+  #   driver: local
+  # filebeatdata01:
+  #   driver: local
+  logstash-data:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=nas,tcp,rw,noatime,nfsvers=4"
+      device: ":/mnt/vm_pool/misc/logstash-data"
