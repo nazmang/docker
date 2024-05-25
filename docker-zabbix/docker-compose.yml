@@ -48,7 +48,7 @@ services:
       - zabbix-net
 
   postgres-backup:
-    image: martlark/pg_dump:16.1
+    image: nazman/pg_dump:16.1
     deploy:
       placement:
         constraints:
