@@ -37,7 +37,7 @@ pipeline {
                     ZBX_SERVER_HOST=zabbix-server
                     ZBX_STARTVMWARECOLLECTORS=1
                     PHP_TZ=Europe/Kiev
-                    PGUSER=${params.POSTGRES_USER}                    
+                    PGUSER=${params.POSTGRES_USER}
                     """
                     writeFile file: "${composeDir}/start.env", text: startEnv
                 }
