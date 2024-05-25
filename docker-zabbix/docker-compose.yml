@@ -49,7 +49,7 @@ services:
       - zabbix-net
 
   postgres-backup:
-    image: nazman/pg_dump:16.1
+    image: nazman/pg_dump:14.12
     deploy:
       placement:
         constraints:
