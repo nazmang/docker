@@ -34,6 +34,7 @@ services:
     environment:
        POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
        POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+       POSTGRES_INITDB_ARGS=: "--auth-host=scram-sha-256"
     secrets:
       - POSTGRES_USER
       - POSTGRES_PASSWORD
