@@ -14,7 +14,6 @@ pipeline {
                 git branch: 'master',
                 url: 'https://github.com/nazmang/docker.git'
             }
-            
         }
         stage('Create Files') {
             when {
@@ -52,8 +51,7 @@ pipeline {
             }        
             steps {                
                 script {
-                    
-                     def composeFile = "${env.DOCKER_COMPOSE_DIR}/docker-compose.yml"
+                    def composeFile = "${env.DOCKER_COMPOSE_DIR}/docker-compose.yml"
 
                     // Check if EXTERNAL_POSTGRES is 'true' and adjust compose file accordingly
                     if (params.EXTERNAL_POSTGRES == 'true') {
@@ -64,6 +62,7 @@ pipeline {
                         sh  """
                                 CONF_VERSION=${BUILD_NUMBER} docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:${DOCKER_SWARM_MANAGER_PORT} \
                                 stack deploy -c ${composeFile} ${env.DOCKER_STACK_NAME}
+                            """ 
                     }
                 }
             }
@@ -82,7 +81,5 @@ pipeline {
                     | xargs -I {} docker secret rm {} || true
                 """
         }
-      //  failure {}
-      //  unstable{}
     }
 }
