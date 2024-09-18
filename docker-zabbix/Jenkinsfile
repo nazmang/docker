@@ -51,11 +51,11 @@ pipeline {
             }        
             steps {                
                 script {
-                    def composeFile = "${env.DOCKER_COMPOSE_DIR}/docker-compose.yml"
+                    def composeFile = "docker-compose.yml"
 
                     // Check if EXTERNAL_POSTGRES is 'true' and adjust compose file accordingly
                     if (params.EXTERNAL_POSTGRES == 'true') {
-                        composeFile = "${env.DOCKER_COMPOSE_DIR}/docker-compose-nopsql.yml"
+                        composeFile = "docker-compose-nopsql.yml"
                     }
 
                     dir("${env.DOCKER_COMPOSE_DIR}") {
