@@ -2,58 +2,57 @@ version: '3.8'
 
 services:
    
-  postgres-zabbix:
-    image: postgres:14-alpine
-    configs:
-     - source: postgres_config
-       target: /etc/postgresql/postgresql.conf
-    command: postgres -c config_file=/etc/postgresql/postgresql.conf
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: any
-      placement:
-        constraints:
-          - node.platform.arch==x86_64
-          - node.role == worker
-      resources:
-        limits:
-          cpus: '3.5'
-          memory: 2G
-        reservations:
-          cpus: '2.0'
-          memory: 1.5G
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$(cat `echo $$POSTGRES_USER_FILE`)" ]
-      interval: 30s
-      timeout: 60s
-      retries: 5
-      start_period: 80s
-    env_file:
-      - start.env
-    environment:
-       POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
-       POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
-       POSTGRES_INITDB_ARGS=: "--auth-host=scram-sha-256"
-    secrets:
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD
-    ports:
-      - target: 5432
-        published: 5432
-        mode: ingress
-    stop_grace_period: 1m
-    volumes:
-      - zabbix-db-new:/var/lib/postgresql/data
-    networks:
-      - zabbix-net
+  # postgres-zabbix:
+  #   image: postgres:14-alpine
+  #   configs:
+  #    - source: postgres_config
+  #      target: /etc/postgresql/postgresql.conf
+  #   command: postgres -c config_file=/etc/postgresql/postgresql.conf
+  #   deploy:
+  #     replicas: 1
+  #     restart_policy:
+  #       condition: any
+  #     placement:
+  #       constraints:
+  #         - node.platform.arch==x86_64
+  #         - node.role == worker
+  #     resources:
+  #       limits:
+  #         cpus: '3.5'
+  #         memory: 2G
+  #       reservations:
+  #         cpus: '2.0'
+  #         memory: 1.5G
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U $$(cat `echo $$POSTGRES_USER_FILE`)" ]
+  #     interval: 30s
+  #     timeout: 60s
+  #     retries: 5
+  #     start_period: 80s
+  #   env_file:
+  #     - start.env
+  #   environment:
+  #      POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
+  #      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
+  #      POSTGRES_INITDB_ARGS=: "--auth-host=scram-sha-256"
+  #   secrets:
+  #     - POSTGRES_USER
+  #     - POSTGRES_PASSWORD
+  #   ports:
+  #     - target: 5432
+  #       published: 5432
+  #       mode: ingress
+  #   stop_grace_period: 1m
+  #   volumes:
+  #     - zabbix-db-new:/var/lib/postgresql/data
+  #   networks:
+  #     - zabbix-net
 
   postgres-backup:
     image: nazman/pg_dump:14.12
     deploy:
       placement:
         constraints:
-          - node.platform.arch==x86_64
           - node.role == worker
     networks:
       - zabbix-net  
@@ -62,9 +61,7 @@ services:
     env_file:
       - start.env  
     environment:
-      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
-      PGHOST: postgres-zabbix
-      PGPORT: 5432
+      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD      
       CRON_SCHEDULE: 0 3 * * * # Every day at 3am
       RETAIN_COUNT: 3 # Keep this number of backups
     secrets:
@@ -83,8 +80,7 @@ services:
       - postgres-zabbix 
     environment:
       DATA_SOURCE_USER_FILE: /run/secrets/POSTGRES_USER
-      DATA_SOURCE_PASS_FILE: /run/secrets/POSTGRES_PASSWORD 
-      DATA_SOURCE_URI: postgres-zabbix?sslmode=disable
+      DATA_SOURCE_PASS_FILE: /run/secrets/POSTGRES_PASSWORD       
     secrets:
       - POSTGRES_USER
       - POSTGRES_PASSWORD               
@@ -141,9 +137,7 @@ services:
 
   zabbix-web:
     image: zabbix/zabbix-web-nginx-pgsql:6.4-alpine-latest
-    environment:
-      DB_SERVER_HOST: postgres-zabbix
-      DB_SERVER_PORT: 5432 
+    environment:      
       ZBX_SERVER_HOST: zabbix-server
       PHP_TZ: Europe/Kiev
     env_file:
@@ -202,12 +196,12 @@ networks:
       com.docker.network.enable_ipv6: "false"
   
 volumes:
-  zabbix-db-new:
-    driver: local
-    driver_opts:
-      type: "nfs"
-      o: "addr=nas,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
-      device: ":/mnt/trash_pool/misc/zabbix_db_new"  
+  # zabbix-db-new:
+  #   driver: local
+  #   driver_opts:
+  #     type: "nfs"
+  #     o: "addr=nas,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
+  #     device: ":/mnt/trash_pool/misc/zabbix_db_new"  
   zabbix-db-backup:
     driver: local
     driver_opts:

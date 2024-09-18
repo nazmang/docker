@@ -40,8 +40,12 @@ networks:
 volumes:
   portainer_data:
     driver: local
+    # driver_opts:
+    #   type: "nfs"
+    #   o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime,vers=4.1"
+    #   device: ":/mnt/vm_pool/misc/portainer_data"
     driver_opts:
-      type: "nfs"
-      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime,vers=4.1"
-      device: ":/mnt/vm_pool/misc/portainer_data"
+      type: none
+      device: /data/portainer_data
+      o: bind
 

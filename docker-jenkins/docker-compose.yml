@@ -22,6 +22,7 @@ services:
       placement:
         constraints:
           - "node.role==worker"
+          - "node.labels.location!=cloud" 
 
   etcd:
     image: docker.io/bitnami/etcd:3.5
@@ -37,6 +38,10 @@ services:
       - jenkins_net      
     volumes:
       - etcd_data:/bitnami/etcd
+    deploy:
+      placement:
+        constraints:         
+          - "node.labels.location!=cloud"   
    
   jenkins-agent:
      image: jenkins/agent:latest-alpine-jdk17
@@ -55,7 +60,7 @@ services:
      deploy:
        placement:
          constraints:
-           - "node.role==worker"
+           - "node.role==worker"          
        update_config:
         delay: 10s
         order: start-first    
