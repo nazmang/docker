@@ -52,11 +52,11 @@ pipeline {
             steps {                
                 script {
                     def composeFile = "docker-compose.yml"
-                    println "value is: ${params.EXTERNAL_POSTGRES}"
-
+                   
                     // Check if EXTERNAL_POSTGRES is 'true' and adjust compose file accordingly
-                    if (params.EXTERNAL_POSTGRES.toBoolean() == 'true') {
+                    if (params.EXTERNAL_POSTGRES.toBoolean() == true) {
                         composeFile = "docker-compose-nopsql.yml"
+                        println = "External Postgres stack version will be deployed!"
                     }
 
                     dir("${env.DOCKER_COMPOSE_DIR}") {
