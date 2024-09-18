@@ -32,7 +32,7 @@ pipeline {
                     POSTGRES_DB=${params.POSTGRES_DB}
                     POSTGRES_USER_FILE=/run/secrets/POSTGRES_USER
                     POSTGRES_PASSWORD_FILE=/run/secrets/POSTGRES_PASSWORD
-                    DB_SERVER_HOST=postgres-zabbix
+                    DB_SERVER_HOST=${params.POSTGRES_HOST}
                     DB_SERVER_PORT=5432
                     ZBX_SERVER_HOST=zabbix-server
                     ZBX_STARTVMWARECOLLECTORS=1
@@ -53,11 +53,17 @@ pipeline {
             steps {                
                 script {
                     
+                     def composeFile = "${env.DOCKER_COMPOSE_DIR}/docker-compose.yml"
+
+                    // Check if EXTERNAL_POSTGRES is 'true' and adjust compose file accordingly
+                    if (params.EXTERNAL_POSTGRES == 'true') {
+                        composeFile = "${env.DOCKER_COMPOSE_DIR}/docker-compose-nopsql.yml"
+                    }
+
                     dir("${env.DOCKER_COMPOSE_DIR}") {
                         sh  """
                                 CONF_VERSION=${BUILD_NUMBER} docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:${DOCKER_SWARM_MANAGER_PORT} \
-                                stack deploy -c docker-compose.yml ${env.DOCKER_STACK_NAME}
-                            """ 
+                                stack deploy -c ${composeFile} ${env.DOCKER_STACK_NAME}
                     }
                 }
             }

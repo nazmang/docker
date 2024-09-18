@@ -2,52 +2,6 @@ version: '3.8'
 
 services:
    
-  postgres-zabbix:
-    image: postgres:14-alpine
-    configs:
-     - source: postgres_config
-       target: /etc/postgresql/postgresql.conf
-    command: postgres -c config_file=/etc/postgresql/postgresql.conf
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: any
-      placement:
-        constraints:
-          - node.platform.arch==x86_64
-          - node.role == worker
-      resources:
-        limits:
-          cpus: '3.5'
-          memory: 2G
-        reservations:
-          cpus: '2.0'
-          memory: 1.5G
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$(cat `echo $$POSTGRES_USER_FILE`)" ]
-      interval: 30s
-      timeout: 60s
-      retries: 5
-      start_period: 80s
-    env_file:
-      - start.env
-    environment:
-       POSTGRES_USER_FILE: /run/secrets/POSTGRES_USER
-       POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD
-       POSTGRES_INITDB_ARGS=: "--auth-host=scram-sha-256"
-    secrets:
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD
-    ports:
-      - target: 5432
-        published: 5432
-        mode: ingress
-    stop_grace_period: 1m
-    volumes:
-      - zabbix-db-new:/var/lib/postgresql/data
-    networks:
-      - zabbix-net
-
   postgres-backup:
     image: nazman/pg_dump:14.12
     deploy:
@@ -195,13 +149,7 @@ networks:
     driver_opts:
       com.docker.network.enable_ipv6: "false"
   
-volumes:
-  zabbix-db-new:
-    driver: local
-    driver_opts:
-      type: "nfs"
-      o: "addr=nas,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
-      device: ":/mnt/trash_pool/misc/zabbix_db_new"  
+volumes:  
   zabbix-db-backup:
     driver: local
     driver_opts:
