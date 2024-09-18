@@ -8,6 +8,7 @@ services:
       placement:
         constraints:
           - node.role == worker
+          - node.labels.location != cloud
     networks:
       - zabbix-net  
     depends_on:
