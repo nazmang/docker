@@ -38,6 +38,9 @@ pipeline {
                     ZBX_STARTVMWARECOLLECTORS=1
                     PHP_TZ=Europe/Kiev
                     PGUSER=${params.POSTGRES_USER}
+                    PGHOST=${params.POSTGRES_HOST}
+                    PGPORT=5432
+                    DATA_SOURCE_URI=${params.POSTGRES_HOST}?sslmode=disable
                     """
                     writeFile file: "${composeDir}/start.env", text: startEnv
                 }
