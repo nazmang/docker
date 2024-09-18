@@ -57,7 +57,9 @@ services:
           cpus: '1.5'
           memory: 750M   
     env_file:
-      - start.env       
+      - start.env    
+    environment:
+      - ZBX_SOURCEIP=0.0.0.0     
     secrets:
       - POSTGRES_USER
       - POSTGRES_PASSWORD   
