@@ -33,7 +33,12 @@ pipeline {
                 script {
                     
                     dir("${env.DOCKER_COMPOSE_DIR}") {
-                        sh "docker stack deploy -c ${env.DOCKER_COMPOSE_FILE} ${env.DOCKER_STACK_NAME}" 
+                        sh '''
+                            export ${shell grep -v '^#' .env | xargs} && \
+	                        envsubst < ${DOCKER_COMPOSE_FILE} | docker stack deploy -c - $(DOCKER_STACK_NAME)
+
+                        '''                 
+                        // sh "docker stack deploy -c ${env.DOCKER_COMPOSE_FILE} ${env.DOCKER_STACK_NAME}" 
                     }
                 }
             }
