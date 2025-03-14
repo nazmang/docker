@@ -1,7 +1,6 @@
-version: '3.8'
+version: "3.8"
 
 services:
-
   jenkins:
     image: jenkins/jenkins:lts
     user: root
@@ -9,21 +8,20 @@ services:
       - 8081:8080
       - 50000:50000
     networks:
-      - jenkins_net      
+      - jenkins_net
     environment:
       - VIRTUAL_HOST=${VIRTUAL_HOST}
       - LETSENCRYPT_HOST=${LETSENCRYPT_HOST}
       - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
-      - VIRTUAL_PORT=8080    
+      - VIRTUAL_PORT=8080
     volumes:
       - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
     deploy:
       placement:
         constraints:
           - "node.role==worker"
-          - "node.labels.location!=cloud" 
 
+  # ETCD is required to save terraform state
   etcd:
     image: docker.io/bitnami/etcd:3.5
     environment:
@@ -35,55 +33,64 @@ services:
       - 2379:2379
       - 2380:2380
     networks:
-      - jenkins_net      
+      - jenkins_net
     volumes:
       - etcd_data:/bitnami/etcd
+
+  jenkins-agent:
+    image: jenkins/agent:latest-alpine-jdk17
+    command:
+      [
+        "java",
+        "-jar",
+        "/usr/share/jenkins/slave.jar",
+        "-name",
+        "jenkins-agent",
+        "-url",
+        "http://jenkins:8080/",
+        "-secret",
+        "@/run/secrets/jenkins_secret",
+        "-webSocket",
+      ]
+    init: true
+    stdin_open: true
+    tty: true
+    networks:
+      - jenkins_net
+    environment:
+      - "JENKINS_URL=http://jenkins:8081"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    secrets:
+      - jenkins_secret
     deploy:
       placement:
-        constraints:         
-          - "node.labels.location!=cloud"   
-   
-  jenkins-agent:
-     image: jenkins/agent:latest-alpine-jdk17
-     command: ["java", "-jar", "/usr/share/jenkins/slave.jar", "-jnlpUrl", "http://jenkins:8080/computer/jenkins%2Dagent/jenkins-agent.jnlp", "-secret",  "@/run/secrets/jenkins_secret"]
-     init: true
-     stdin_open: true
-     tty: true        
-     networks:
-      - jenkins_net      
-     environment:
-      - 'JENKINS_URL=http://jenkins:8081'
-     volumes:
-      - /etc/localtime:/etc/localtime:ro
-     secrets:
-      - jenkins_secret
-     deploy:
-       placement:
-         constraints:
-           - "node.role==worker"          
-       update_config:
+        constraints:
+          - "node.role==worker"
+      update_config:
         delay: 10s
-        order: start-first    
-  
+        order: start-first
+
 secrets:
+  # For Jenkins agent connection to main instance
   jenkins_secret:
     file: ./secret-file
-        
+
 networks:
-  jenkins_net:      
+  jenkins_net:
     driver: overlay
-    attachable: true 
+    attachable: true
 
 volumes:
   jenkins_home:
     driver: local
     driver_opts:
-      type: "nfs"
-      o: "addr=nas,tcp,rw,noatime"
-      device: ":/mnt/vm_pool/misc/jenkins_home/jenkins_local"          
+      type: "none"
+      o: "bind"
+      device: "${JENKINS_HOME_PATH}"
   etcd_data:
     driver: local
     driver_opts:
-      type: "nfs"
-      o: "addr=nas,rw,noatime,nfsvers=4"
-      device: ":/mnt/trash_pool/misc/etcd_data"          
+      type: "none"
+      o: "bind"
+      device: "${ETCD_DATA_PATH}"
