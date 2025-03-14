@@ -2,7 +2,8 @@ version: '3.2'
 
 services:
   agent:
-    image: portainer/agent:2.19.0
+    extends: portainer-agent-stack.yml
+    image: portainer/agent:2.21.4
     environment:
       LOG_LEVEL: DEBUG
     volumes:
@@ -18,7 +19,7 @@ services:
         constraints: [node.platform.os == linux]
 
   portainer:
-    image: portainer/portainer-ce:2.19.0
+    image: portainer/portainer-ce:2.21.4
     command: -H tcp://tasks.portainer_agent:9001 --tlsskipverify
     ports:
       - "9443:9443"
@@ -51,8 +52,12 @@ networks:
 volumes:
   portainer_data:
     driver: local
+    # driver_opts:
+    #   type: "nfs"
+    #   o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime,vers=4.1"
+    #   device: ":/mnt/vm_pool/misc/portainer_data"
     driver_opts:
-      type: "nfs"
-      o: "addr=nas,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime,vers=4.1"
-      device: ":/mnt/vm_pool/misc/portainer_data"
+      type: none
+      device: /data_gb/portainer_data
+      o: bind
 

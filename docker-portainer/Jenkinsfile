@@ -1,0 +1,51 @@
+pipeline {
+   agent { label 'swarm && local' } 
+    
+    environment {
+        DOCKER_STACK_NAME = 'portainer' 
+        DOCKER_COMPOSE_DIR = 'docker-portainer' // Path to docker-compose.yml 
+        DOCKER_COMPOSE_FILE = 'portainer-agent-stack.yml'
+        IMAGE_VERSION = '2.21.4'      
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'master',
+                url: 'https://github.com/nazmang/docker.git'
+            }
+            
+        }
+        stage('Create Files') {
+            steps {
+                script {
+                    def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
+                    // Create .env file with parameters in DOCKER_COMPOSE_DIR
+                    def startEnv = """
+                    PORTAINER_VERSION = ${env.IMAGE_VERSION}
+                    """
+                    writeFile file: "${composeDir}/.env", text: startEnv
+                }
+            }
+        }
+        stage('Deploy stack'){            
+            steps {                
+                script {
+                    
+                    dir("${env.DOCKER_COMPOSE_DIR}") {
+                        sh "docker stack deploy -c ${env.DOCKER_COMPOSE_FILE} ${env.DOCKER_STACK_NAME}" 
+                    }
+                }
+            }
+        }
+        
+    }
+    post {
+        always { 
+            cleanWs()
+        }
+      //  success {}
+      //  failure {}
+      //  unstable{}
+    }
+}
