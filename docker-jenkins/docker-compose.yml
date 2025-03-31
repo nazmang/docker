@@ -5,7 +5,7 @@ services:
     image: jenkins/jenkins:lts
     user: root
     ports:
-      - 8081:8080
+      - 8080:8080
       - 50000:50000
     networks:
       - jenkins_net
@@ -20,22 +20,6 @@ services:
       placement:
         constraints:
           - "node.role==worker"
-
-  # ETCD is required to save terraform state
-  etcd:
-    image: docker.io/bitnami/etcd:3.5
-    environment:
-      - ALLOW_NONE_AUTHENTICATION=yes
-      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
-      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
-      - ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379
-    ports:
-      - 2379:2379
-      - 2380:2380
-    networks:
-      - jenkins_net
-    volumes:
-      - etcd_data:/bitnami/etcd
 
   jenkins-agent:
     image: jenkins/agent:latest-alpine-jdk17
@@ -72,7 +56,6 @@ services:
         order: start-first
 
 secrets:
-  # For Jenkins agent connection to main instance
   jenkins_secret:
     file: ./secret-file
 
@@ -88,9 +71,3 @@ volumes:
       type: "none"
       o: "bind"
       device: "${JENKINS_HOME_PATH}"
-  etcd_data:
-    driver: local
-    driver_opts:
-      type: "none"
-      o: "bind"
-      device: "${ETCD_DATA_PATH}"

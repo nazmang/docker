@@ -5,19 +5,40 @@ DOCKER_CONTEXT ?= default  # Default context if not specified
 
 # Default target
 .PHONY: all
-all: deploy
+all: deploy-all
 
 # Initialize Docker Swarm (if not already done)
 .PHONY: init-swarm
 init-swarm:
 	@docker --context $(DOCKER_CONTEXT) swarm init || echo "Swarm already initialized or not needed."
 
-# Deploy Jenkins stack
-.PHONY: deploy
-deploy: init-swarm
+.PHONY: deploy-jenkins
+deploy-jenkins:
 	@export $(shell grep -v '^#' .env | xargs) && \
 	envsubst < $(COMPOSE_FILE) | docker --context $(DOCKER_CONTEXT) stack deploy -c - $(STACK_NAME)
 	@rm -f /tmp/rendered-compose.yml
+	@echo "${STACK_NAME} jenkins service deployed to context '$(DOCKER_CONTEXT)'."
+
+.PHONY: deploy-etcd
+deploy-etcd:
+	@export $(shell grep -v '^#' .env | xargs) && \
+	envsubst < $(COMPOSE_FILE) | docker --context $(DOCKER_CONTEXT) stack deploy -c - $(STACK_NAME)
+	@rm -f /tmp/rendered-compose.yml
+	@echo "${STACK_NAME} etcd service deployed to context '$(DOCKER_CONTEXT)'."
+
+.PHONY: deploy-cloudflare
+deploy-cloudflare:
+	@export $(shell grep -v '^#' .env | xargs) && \
+	envsubst < $(COMPOSE_FILE) | docker --context $(DOCKER_CONTEXT) stack deploy -c - $(STACK_NAME)
+	@rm -f /tmp/rendered-compose.yml
+	@echo "${STACK_NAME} cloudflare service deployed to context '$(DOCKER_CONTEXT)'."
+
+# Deploy full Jenkins stack
+.PHONY: deploy-all
+deploy-all: init-swarm
+	@$(MAKE) deploy-jenkins COMPOSE_FILE=docker-compose.yml
+	@$(MAKE) deploy-etcd COMPOSE_FILE=etcd-compose.yml
+	@$(MAKE) deploy-cloudflare COMPOSE_FILE=cloudflared-compose.yml
 	@echo "${STACK_NAME} stack deployed to context '$(DOCKER_CONTEXT)'."
 
 # Check the status of the services
