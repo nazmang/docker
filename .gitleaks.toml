@@ -1,7 +1,0 @@
-#[[rules]]
-#description = "Generic secrets"
-#regex = '''(?i)(aws|azure|gcp|api|token|key|secret|password|passwd|credentials|private_key|client_secret|client_id|access_token|access_key|api_key|api_token|connection_string|database_url|db_password|db_user|db_host|db_name|db_port|jwt|oauth|ssh|sftp|ftp|ldap|smtp|imap|pop3|redis|memcached|couchbase|mongodb|cassandra|elasticsearch|rabbitmq|kafka|vault|consul|etcd|docker|kubernetes|terraform|ansible|chef|puppet|saltstack|jenkins|travis|circleci|gitlab|bitbucket|heroku|netlify|vercel|firebase|aws_access_key_id|aws_secret_access_key|azure_client_id|azure_client_secret|gcp_client_id|gcp_client_secret|github_token|gitlab_token|bitbucket_token|heroku_api_key|netlify_api_key|vercel_api_key|firebase_api_key)[\s:=]+['"]?[0-9a-zA-Z\-_+/=]+['"]?'''
-#type = "regex"
-
-[paths]
-ignore = ["*.sample"]
