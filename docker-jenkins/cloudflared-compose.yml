@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2025.2.1
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    networks:
+      - jenkins_net
+
+networks:
+  jenkins_net:
+    name: jenkins_jenkins_net
+    external: true
