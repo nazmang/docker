@@ -36,7 +36,7 @@ jobs:
         id: check_dockerfile
         uses: andstor/file-existence-action@v2
         with:
-          file: ./Dockerfile  
+          files: "./Dockerfile"  
 
       - name: Run hadolint
         if: steps.check_dockerfile.outputs.exists == 'true'
