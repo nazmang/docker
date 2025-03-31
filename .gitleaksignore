@@ -1,4 +1,2 @@
 34791472c76f304eb2f306c6da9c58f646d1aca0:docker-elk/.env.sample:generic-api-key:41
 b8512f51faeeb36ebee2791eb699d56c0b30ef27:docker-ansible-semaphore/.semaphore.env.sample:generic-api-key:13
-docker-ansible-semaphore/.semaphore.env.sample:generic-api-key:13
-docker-elk/.env.sample:generic-api-key:41
