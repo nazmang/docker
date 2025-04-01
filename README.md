@@ -11,8 +11,8 @@ This repo contains multiple deployment files for stacks and services used in my 
 | [docker-iperf3](docker-iperf3/)       | Network performance tool using iPerf3.                     |
 | [docker-jellyfin](docker-jellyfin/)   | Jellyfin media server for managing and streaming content.   |
 | [docker-jenkins](docker-jenkins/)     | Jenkins for CI/CD pipelines and automation.                 |
+| [docker-monitoring](docker-monitoring/)     | Monitoring Docker Swarm with Promethues, Alertmanager & Grafana.                 |
 | [docker-nginx-proxymgr](docker-nginx-proxymgr/) | NGINX Proxy Manager for managing proxies and SSL certificates. |
 | [docker-portainer](docker-portainer/) | Portainer for managing Docker containers and stacks with a web interface. |
-| [docker-prometheus](docker-prometheus/) | Prometheus for monitoring and alerting with time-series data. |
 | [docker-transmission-openvpn](docker-transmission-openvpn/) | Transmission torrent client with OpenVPN for secure torrenting. |
 | [docker-zabbix](docker-zabbix/)       | Zabbix for monitoring IT infrastructure and services.       |
