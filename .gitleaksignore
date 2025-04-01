@@ -1,2 +1,6 @@
 34791472c76f304eb2f306c6da9c58f646d1aca0:docker-elk/.env.sample:generic-api-key:41
 b8512f51faeeb36ebee2791eb699d56c0b30ef27:docker-ansible-semaphore/.semaphore.env.sample:generic-api-key:13
+c5dd67a1d2cb5051c1ae0a2f96a7da48651aef5f:docker-zabbix/docker-compose.yml:generic-api-key:37
+746d8bac3494ccd2c44f3d773c8e7ebce59f6300:docker-zabbix/docker-compose.yml:generic-api-key:37
+34791472c76f304eb2f306c6da9c58f646d1aca0:docker-elk/entrypoint.sh:curl-auth-user:39
+1cdee2ef5c5029687b3566daa70f351efaa3f5a0:docker-zabbix/docker-compose.yml:generic-api-key:37
