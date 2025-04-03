@@ -1,63 +1,83 @@
 pipeline {
-    agent {label 'jnlp-agent-docker'}
-    
+    agent { label 'cloud' }
+
     environment {
-        DOCKER_STACK_NAME = 'jenkins' 
-        DOCKER_COMPOSE_DIR = 'docker-jenkins' // Path to docker-compose.yml
-        DOCKER_SWARM_MANAGER_IP = '192.168.150.58'
-        DOCKER_SWARM_MANAGER_PORT = '2376'
-        VIRTUAL_HOST='your-domain.com'
-        VIRTUAL_PORT=8080 
-        LETSENCRYPT_HOST='your-domain.com'
-        LETSENCRYPT_EMAIL="your@email.com"        
+        CLOUDFLARED_TAG = '2025.2.1'
+        DOCKER_COMPOSE_DIR = 'docker-jenkins'
+        DOCKER_STACK_NAME = 'jenkins'
+        ETCD_DATA_PATH = '/data/etcd_data'
+        JENKINS_AGENT_TAG = 'latest-jdk21'
+        JENKINS_HOME_PATH = '/data/jenkins_home/jenkins_local'
+        JENKINS_SECRET = credentials('JENKINS_AGENT_SECRET')
+        JENKINS_TAG = 'latest-jdk21'
+        LETSENCRYPT_HOST = params.VIRTUAL_HOST
+        TUNNEL_TOKEN = credentials('CLOUDFLARE_TUNNEL_TOKEN')
+        VIRTUAL_HOST = params.VIRTUAL_HOST
+        VIRTUAL_PORT = 8080
+        LETSENCRYPT_EMAIL = params.LETSENCRYPT_EMAIL
+
     }
-    
+
+    parameters {
+        string(name: 'LETSENCRYPT_EMAIL', defaultValue: 'admin@example.com', description: 'Letsencrypt email address')
+        string(name: 'VIRTUAL_HOST', defaultValue: 'jenkins.example.com', description: 'Virtual host domain')
+    }
+
+    options {
+        skipDefaultCheckout()
+    }
+
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'master',
-                url: 'https://github.com/nazmang/docker.git'
+                    url: 'https://github.com/nazmang/docker.git',
+                    changelog: false,
+                    changeset: false,
+                    poll: false,
+                    checkoutSubmodules: false,
+                    sparseCheckoutPaths: ["${env.DOCKER_COMPOSE_DIR}/*"]
             }
-            
         }
+
         stage('Create Files') {
             steps {
                 script {
                     def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
-                    // Create secret file
+
                     writeFile file: "${composeDir}/secret-file", text: env.JENKINS_SECRET
-                   
-                    // Create .env file with parameters in DOCKER_COMPOSE_DIR
-                    def startEnv = """
-                    VIRTUAL_HOST=${env.VIRTUAL_HOST}
-                    LETSENCRYPT_HOST=${env.LETSENCRYPT_HOST}
+
+                    def envContent = """
+                    CLOUDFLARED_TAG=${env.CLOUDFLARED_TAG}
+                    ETCD_DATA_PATH=${env.ETCD_DATA_PATH}
+                    JENKINS_HOME_PATH=${env.JENKINS_HOME_PATH}
+                    JENKINS_AGENT_TAG=${env.JENKINS_AGENT_TAG}
+                    JENKINS_TAG=${env.JENKINS_TAG}
                     LETSENCRYPT_EMAIL=${env.LETSENCRYPT_EMAIL}
-                    VIRTUAL_PORT=${env.VIRTUAL_PORT} 
+                    LETSENCRYPT_HOST=${env.LETSENCRYPT_HOST}
+                    TUNNEL_TOKEN=${env.TUNNEL_TOKEN}
+                    VIRTUAL_HOST=${env.VIRTUAL_HOST}
+                    VIRTUAL_PORT=${env.VIRTUAL_PORT}
                     """
-                    writeFile file: "${composeDir}/.env", text: startEnv
+                    writeFile file: "${composeDir}/.env", text: envContent
                 }
             }
         }
-        stage('Deploy stack'){            
-            steps {                
+
+        stage('Deploy stack') {
+            steps {
                 script {
-                    
                     dir("${env.DOCKER_COMPOSE_DIR}") {
-                        sh "docker service rm ${env.DOCKER_STACK_NAME}_jenkins-agent"
-                        sh "docker secret rm ${env.DOCKER_STACK_NAME}_jenkins_secret"
-                        sh "docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:${DOCKER_SWARM_MANAGER_PORT} stack deploy -c docker-compose.yml ${env.DOCKER_STACK_NAME}" 
+                        sh "make -f Makefile -e deploy-all STACK_NAME=${env.DOCKER_STACK_NAME}"
                     }
                 }
             }
         }
-        
     }
+
     post {
-        always { 
+        always {
             cleanWs()
         }
-      //  success {}
-      //  failure {}
-      //  unstable{}
     }
 }

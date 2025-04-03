@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   cloudflared:
-    image: cloudflare/cloudflared:2025.2.1
+    image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-latest}
     command: tunnel run
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}

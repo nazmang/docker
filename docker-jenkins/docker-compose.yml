@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   jenkins:
-    image: jenkins/jenkins:lts
+    image: jenkins/jenkins:${JENKINS_TAG:-latest}
     user: root
     ports:
       - 8080:8080
@@ -20,9 +20,15 @@ services:
       placement:
         constraints:
           - "node.role==worker"
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: pause
 
   jenkins-agent:
-    image: jenkins/agent:latest-alpine-jdk17
+    image: jenkins/agent:${JENKINS_AGENT_TAG:-latest}
     command:
       [
         "java",
