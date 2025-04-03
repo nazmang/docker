@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   etcd:
-    image: docker.io/bitnami/etcd:3.5
+    image: "docker.io/bitnami/etcd:${ETCD_TAG:-latest}"
     environment:
       - ALLOW_NONE_AUTHENTICATION=yes
       - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
