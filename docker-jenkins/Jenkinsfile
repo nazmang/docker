@@ -10,20 +10,27 @@ pipeline {
         JENKINS_HOME_PATH = '/data/jenkins_home/jenkins_local'
         JENKINS_SECRET = credentials('JENKINS_AGENT_SECRET')
         JENKINS_TAG = 'latest-jdk21'
-        LETSENCRYPT_HOST = '${params.VIRTUAL_HOST}'
+        LETSENCRYPT_HOST = 'example.com'
         TUNNEL_TOKEN = credentials('CLOUDFLARE_TUNNEL_TOKEN')
-        VIRTUAL_HOST = '${params.VIRTUAL_HOST}'
+        VIRTUAL_HOST = 'example.com'
         VIRTUAL_PORT = 8080
-        LETSENCRYPT_EMAIL = '${params.LETSENCRYPT_EMAIL}'
+        LETSENCRYPT_EMAIL = 'admin@example.com'
 
     }
 
-    parameters {
-        string(name: 'LETSENCRYPT_EMAIL', defaultValue: 'admin@example.com', description: 'Letsencrypt email address')
-        string(name: 'VIRTUAL_HOST', defaultValue: 'jenkins.example.com', description: 'Virtual host domain')
-    }
+   
+//    options {
+//        skipDefaultCheckout()
+//    }
 
     stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'master',
+                    url: 'https://github.com/nazmang/docker.git'
+            }
+        }
+        
         stage('Check Changes in DOCKER_COMPOSE_DIR') {
             steps {
                 script {
