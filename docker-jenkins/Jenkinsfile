@@ -23,10 +23,6 @@ pipeline {
         string(name: 'VIRTUAL_HOST', defaultValue: 'jenkins.example.com', description: 'Virtual host domain')
     }
 
-    options {
-        skipDefaultCheckout()
-    }
-
     stages {
         stage('Check Changes in DOCKER_COMPOSE_DIR') {
             steps {
