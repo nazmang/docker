@@ -10,11 +10,11 @@ pipeline {
         JENKINS_HOME_PATH = '/data/jenkins_home/jenkins_local'
         JENKINS_SECRET = credentials('JENKINS_AGENT_SECRET')
         JENKINS_TAG = 'latest-jdk21'
-        LETSENCRYPT_HOST = params.VIRTUAL_HOST
+        LETSENCRYPT_HOST = '${params.VIRTUAL_HOST}'
         TUNNEL_TOKEN = credentials('CLOUDFLARE_TUNNEL_TOKEN')
-        VIRTUAL_HOST = params.VIRTUAL_HOST
+        VIRTUAL_HOST = '${params.VIRTUAL_HOST}'
         VIRTUAL_PORT = 8080
-        LETSENCRYPT_EMAIL = params.LETSENCRYPT_EMAIL
+        LETSENCRYPT_EMAIL = '${params.LETSENCRYPT_EMAIL}'
 
     }
 
