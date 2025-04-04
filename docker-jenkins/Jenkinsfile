@@ -27,16 +27,6 @@ pipeline {
         skipDefaultCheckout()
     }
 
-    triggers {
-        genericWebhook(
-            genericVariables: [
-                [key: 'changedFiles', value: '$.commits[*].modified[*]']
-            ],
-            token: credentials('webhook-secret'),
-            causeString: 'Changes detected in ${changedFiles}'
-        )
-    }
-
     stages {
         stage('Check Changes in DOCKER_COMPOSE_DIR') {
             steps {
