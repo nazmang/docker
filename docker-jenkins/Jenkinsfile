@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'cloud' }
+    agent { label 'cloud && hetzner'  }
 
     environment {
         CLOUDFLARED_TAG = '2025.2.1'
