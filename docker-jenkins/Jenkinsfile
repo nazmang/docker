@@ -1,3 +1,5 @@
+def deployExecuted = false // Flag indicates when stack deploy is successful
+
 pipeline {
     agent { label 'cloud && hetzner'  }
 
@@ -17,8 +19,7 @@ pipeline {
         TELEGRAM_CHAT_ID = credentials('telegramChatid')   
         VIRTUAL_HOST = 'example.com'
         VIRTUAL_PORT = 8080
-        LETSENCRYPT_EMAIL = 'admin@example.com'
-        DEPLOY_EXECUTED = 'false' // Flag to check 'Deploy stack' step status 
+        LETSENCRYPT_EMAIL = 'admin@example.com'       
     }
    
     stages {        
@@ -61,6 +62,8 @@ pipeline {
                         env.DEPLOY_EXECUTED = 'true'
                     }
                 }
+                deployExecuted = true
+                echo "Deploy executed: ${deployExecuted}"
             }
         }
     }
@@ -71,13 +74,18 @@ pipeline {
         }
         success {
             script{                            
-                if (env.DEPLOY_EXECUTED == 'true') {
-                    def message = "✅ *Jenkins Deploy Success*\n" +
+                if (deployExecuted) {
+                    def message = "✅ <b>Jenkins Deploy Success</b>\n" +
                                   "Job: ${env.JOB_NAME}\n" +
                                   "Build: #${env.BUILD_NUMBER}\n" +
                                   "Stack: ${env.DOCKER_STACK_NAME}\n" +
                                   "URL: ${env.BUILD_URL}"
-                    telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message)
+                    sh """
+                        curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
+                        -d chat_id=${env.TELEGRAM_CHAT_ID} \
+                        -d text="${message}" \
+                        -d parse_mode=HTML
+                    """
                 } else {
                     echo "Deploy stack was not executed, skipping Telegram notification."
                 }
