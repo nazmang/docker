@@ -17,6 +17,39 @@ pipeline {
                 url: 'https://github.com/nazmang/docker.git'
             }
         }
+
+        stage('Check Changes in DOCKER_COMPOSE_DIR') {
+            steps {
+                script {
+                    // Initial checkout 
+                    def scmVars = checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/master']],
+                        userRemoteConfigs: [[url: 'https://github.com/nazmang/docker.git']],
+                        extensions: [
+                            [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: "${env.DOCKER_COMPOSE_DIR}/"]]]
+                        ]
+                    ])
+
+                    // Recieve last and previous commits info 
+                    def currentCommit = scmVars.GIT_COMMIT
+                    def previousCommit = scmVars.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: 'HEAD^'
+
+                    // Check changes between commits 
+                    def changedFiles = sh(script: "git diff --name-only ${previousCommit} ${currentCommit}", returnStdout: true).trim().split('\n')
+                    def relevantChanges = changedFiles.any { it.startsWith("${env.DOCKER_COMPOSE_DIR}/") }
+
+                    if (!relevantChanges) {
+                        echo "No changes detected in ${env.DOCKER_COMPOSE_DIR}. Aborting pipeline."
+                        currentBuild.result = 'ABORTED'
+                        error("No relevant changes detected")
+                    } else {
+                        echo "Changes detected in ${env.DOCKER_COMPOSE_DIR}. Proceeding with pipeline."
+                    }
+                }
+            }
+        }
+        
         stage('Create Files') {
             when {
                 changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
