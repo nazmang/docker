@@ -1,30 +1,6 @@
-version: '3.8'
+version: "3.8"
 
 services:
-   
-  postgres-backup:
-    image: nazman/pg_dump:14.12
-    deploy:
-      placement:
-        constraints:
-          - node.role == worker
-          - node.labels.location != cloud
-    networks:
-      - zabbix-net  
-    depends_on:
-      - postgres-zabbix
-    env_file:
-      - start.env  
-    environment:
-      POSTGRES_PASSWORD_FILE: /run/secrets/POSTGRES_PASSWORD      
-      CRON_SCHEDULE: 0 3 * * * # Every day at 3am
-      RETAIN_COUNT: 3 # Keep this number of backups
-    secrets:
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD  
-    volumes:
-      - zabbix-db-backup:/dump    
-
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     ports:
@@ -32,46 +8,47 @@ services:
     networks:
       - zabbix-net
     depends_on:
-      - postgres-zabbix 
+      - postgres-zabbix
     environment:
       DATA_SOURCE_USER_FILE: /run/secrets/POSTGRES_USER
-      DATA_SOURCE_PASS_FILE: /run/secrets/POSTGRES_PASSWORD       
+      DATA_SOURCE_PASS_FILE: /run/secrets/POSTGRES_PASSWORD
     secrets:
       - POSTGRES_USER
-      - POSTGRES_PASSWORD               
+      - POSTGRES_PASSWORD
 
   zabbix-server:
     image: zabbix/zabbix-server-pgsql:alpine-6.4-latest
     deploy:
       restart_policy:
         condition: any
-      placement:  
+      placement:
         constraints:
           - node.platform.arch==x86_64
-          - node.role == worker  
+          - node.role == worker
+          - node.labels.location == cloud
       resources:
         limits:
-          cpus: '2.5'
+          cpus: "2.5"
           memory: 1.5G
         reservations:
-          cpus: '1.5'
-          memory: 750M   
+          cpus: "1.5"
+          memory: 750M
     env_file:
-      - start.env    
+      - start.env
     environment:
-      - ZBX_SOURCEIP=0.0.0.0     
+      - ZBX_SOURCEIP=0.0.0.0
     secrets:
       - POSTGRES_USER
-      - POSTGRES_PASSWORD   
+      - POSTGRES_PASSWORD
     ulimits:
       nproc: 65535
       nofile:
         soft: 20000
-        hard: 40000    
+        hard: 40000
     ports:
-      - '10051:10051'
+      - "10051:10051"
     networks:
-      - zabbix-net  
+      - zabbix-net
     depends_on:
       - postgres-zabbix
     stop_grace_period: 30s
@@ -85,38 +62,77 @@ services:
       com.zabbix.company: "Zabbix LLC"
       com.zabbix.component: "zabbix-server"
       com.zabbix.dbtype: "pgsql"
-      com.zabbix.os: "alpine"    
-    logging:
-      driver: gelf
-      options:
-        gelf-address: udp://gw.comintern.local:12201
-        tag: zabbix  
+      com.zabbix.os: "alpine"
+    # logging:
+    #   driver: gelf
+    #   options:
+    #     gelf-address: udp://gw.comintern.local:12201
+    #     tag: zabbix
+
+  zabbix-agent2:
+    image: zabbix/zabbix-agent:alpine-6.4-latest
+    ports:
+      - target: 10050
+        published: 10050
+        protocol: tcp        
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/zabbix:/etc/zabbix/zabbix_agentd.d:ro     
+    tmpfs: /tmp
+    deploy:
+      mode: global
+      restart_policy:   
+        condition: on-failure
+        delay: 3s
+        max_attempts: 5
+        window: 60s  
+      placement:        
+        constraints:
+         - node.platform.arch==x86_64
+         - node.labels.location == cloud
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 64M    
+    privileged: true
+    pid: "host"
+    networks:
+      - zabbix-net
+    stop_grace_period: 5s
+    labels:
+      com.zabbix.description: "Zabbix agent 2"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "zabbix-agent2"
 
   zabbix-web:
     image: zabbix/zabbix-web-nginx-pgsql:6.4-alpine-latest
-    environment:      
+    environment:
       ZBX_SERVER_HOST: zabbix-server
       PHP_TZ: Europe/Kiev
     env_file:
-      - start.env  
+      - start.env
     secrets:
       - POSTGRES_USER
-      - POSTGRES_PASSWORD   
+      - POSTGRES_PASSWORD
     deploy:
       restart_policy:
         condition: on-failure
-      placement:  
+      placement:
         max_replicas_per_node: 1
         constraints:
           - node.platform.arch==x86_64
-          - node.role == manager  
-      replicas: 1    
+          - node.role == manager
+          - node.labels.location == cloud
+      replicas: 1
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 1.5G
         reservations:
-          cpus: '0.7'
+          cpus: "0.7"
           memory: 700M
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
@@ -137,30 +153,22 @@ services:
     depends_on:
       - zabbix-server
     networks:
-      - zabbix-net  
+      - zabbix-net
     labels:
       com.zabbix.description: "Zabbix frontend on Nginx web-server with PostgreSQL database support"
       com.zabbix.company: "Zabbix LLC"
       com.zabbix.component: "zabbix-frontend"
       com.zabbix.webserver: "nginx"
       com.zabbix.dbtype: "pgsql"
-      com.zabbix.os: "alpine" 
+      com.zabbix.os: "alpine"
 
 networks:
   zabbix-net:
-    driver: overlay       
+    driver: overlay
     driver_opts:
       com.docker.network.enable_ipv6: "false"
-  
-volumes:  
-  zabbix-db-backup:
-    driver: local
-    driver_opts:
-      type: "nfs"
-      o: "addr=nas,vers=3,rsize=65536,wsize=65536,timeo=300,tcp,rw,noatime"
-      device: ":/mnt/big_pool/backup/zabbix_db"
- 
-secrets:      
+
+secrets:
   POSTGRES_USER:
     file: ./.POSTGRES_USER
     name: POSTGRES_USER_v${CONF_VERSION}
