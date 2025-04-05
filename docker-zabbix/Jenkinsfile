@@ -89,7 +89,12 @@ pipeline {
                                   "Build: #${env.BUILD_NUMBER}\n" +
                                   "Stack: ${env.DOCKER_STACK_NAME}\n" +
                                   "URL: ${env.BUILD_URL}"
-                    telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message)
+                    sh """
+                        curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
+                        -d chat_id=${env.TELEGRAM_CHAT_ID} \
+                        -d text="${message}" \
+                        -d parse_mode=HTML
+                    """
                 } else {
                     echo "Deploy stack was not executed, skipping Telegram notification."
                 }
