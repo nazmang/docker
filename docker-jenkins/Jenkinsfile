@@ -12,18 +12,21 @@ pipeline {
         JENKINS_TAG = 'latest-jdk21'
         LETSENCRYPT_HOST = 'example.com'
         TUNNEL_TOKEN = credentials('CLOUDFLARE_TUNNEL_TOKEN')
+        // Telegram configre
+        TELEGRAM_BOT_TOKEN = credentials('telegramToken')
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')   
         VIRTUAL_HOST = 'example.com'
         VIRTUAL_PORT = 8080
         LETSENCRYPT_EMAIL = 'admin@example.com'
     }
    
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'master',
-                    url: 'https://github.com/nazmang/docker.git'
-            }
-        }
+        // stage('Checkout') {
+        //     steps {
+        //         git branch: 'master',
+        //             url: 'https://github.com/nazmang/docker.git'
+        //     }
+        // }
         
         stage('Create Files') {
             when {
