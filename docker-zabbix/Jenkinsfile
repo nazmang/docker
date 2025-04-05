@@ -117,31 +117,31 @@ pipeline {
                     | xargs -I {} docker secret rm {} || true
                 """
                 
-                def message = "✅ *Jenkins Deploy Success*\\n" +
-                          "Job: ${env.JOB_NAME.replaceAll('-', '\\\\-')}\\n" +  // Экранируем '-'
-                          "Build: #${env.BUILD_NUMBER}\\n" +
-                          "Stack: ${env.DOCKER_STACK_NAME}\\n" +
-                          "URL: ${env.BUILD_URL.replaceAll('-', '\\\\-')}"     // Экранируем '-' в URL
+                def message = "<b>✅ Jenkins Deploy Success</b>\n" +
+                          "Job: ${env.JOB_NAME}\n" +
+                          "Build: #${env.BUILD_NUMBER}\n" +
+                          "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                          "URL: <a href='${env.BUILD_URL}'>Link</a>"
                 sh """
                     curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
                     -d chat_id=${env.TELEGRAM_CHAT_ID} \
                     -d text="${message}" \
-                    -d parse_mode=MarkdownV2
+                    -d parse_mode=HTML
                 """
             }
         }
         failure {
             script {
-                def message = "❌ *Jenkins Deploy Failed*\\n" +
-                            "Job: ${env.JOB_NAME.replaceAll('-', '\\\\-')}\\n" +
-                            "Build: #${env.BUILD_NUMBER}\\n" +
-                            "Stack: ${env.DOCKER_STACK_NAME}\\n" +
-                            "URL: ${env.BUILD_URL.replaceAll('-', '\\\\-')}"
+                def message = "<b>❌ Jenkins Deploy Failed</b>\n" +
+                          "Job: ${env.JOB_NAME}\n" +
+                          "Build: #${env.BUILD_NUMBER}\n" +
+                          "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                          "URL: <a href='${env.BUILD_URL}'>Link</a>"
                 sh """
                     curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
                     -d chat_id=${env.TELEGRAM_CHAT_ID} \
                     -d text="${message}" \
-                    -d parse_mode=MarkdownV2
+                    -d parse_mode=HTML
                 """
             }
         }
