@@ -2,7 +2,7 @@ pipeline {
     agent { label 'cloud && hetzner'  }
 
     environment {
-        CLOUDFLARED_TAG = '2025.2.1'
+        CLOUDFLARED_TAG = '2025.4.0'
         DOCKER_COMPOSE_DIR = 'docker-jenkins'
         DOCKER_STACK_NAME = 'jenkins'
         ETCD_DATA_PATH = '/data/etcd_data'
