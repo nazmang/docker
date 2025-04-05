@@ -61,9 +61,9 @@ pipeline {
                         sh "make -f Makefile -e deploy-all STACK_NAME=${env.DOCKER_STACK_NAME}"
                         env.DEPLOY_EXECUTED = 'true'
                     }
-                }
-                deployExecuted = true
-                echo "Deploy executed: ${deployExecuted}"
+                    deployExecuted = true
+                    echo "Deploy executed: ${deployExecuted}"
+                }                
             }
         }
     }
