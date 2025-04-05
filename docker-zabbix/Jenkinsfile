@@ -1,3 +1,5 @@
+def deployExecuted = false // Flag indicates when stack deploy is successful
+
 pipeline {
     agent {label 'cloud && hetzner'}
     
@@ -7,8 +9,7 @@ pipeline {
         DOCKER_CONTEXT='default' 
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
-        TELEGRAM_CHAT_ID = credentials('telegramChatid')   
-        DEPLOY_EXECUTED = 'false' // Flag to check 'Deploy stack' step status 
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')         
     }
     
     stages {
@@ -60,9 +61,10 @@ pipeline {
                                 docker context use ${env.DOCKER_CONTEXT}
                                 CONF_VERSION=${BUILD_NUMBER} docker stack deploy -c ${composeFile} ${env.DOCKER_STACK_NAME}
                             """ 
-                        env.DEPLOY_EXECUTED = 'true'    
+                        
                     }
-                    echo "Flag value is: ${env.DEPLOY_EXECUTED}" 
+                    deployExecuted = true
+                    echo "Deploy executed: ${deployExecuted}"
                 }
             }
         }
@@ -81,7 +83,7 @@ pipeline {
                     | xargs -I {} docker secret rm {} || true
                 """
                 
-                if (env.DEPLOY_EXECUTED == 'true') {
+                if (deployExecuted) {
                     def message = "✅ *Jenkins Deploy Success*\n" +
                                   "Job: ${env.JOB_NAME}\n" +
                                   "Build: #${env.BUILD_NUMBER}\n" +
