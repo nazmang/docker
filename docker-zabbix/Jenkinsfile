@@ -1,11 +1,13 @@
 pipeline {
-    agent {label 'jnlp-agent-docker'}
+    agent {label 'cloud && hetzner'}
     
     environment {
         DOCKER_STACK_NAME = 'zabbix' 
-        DOCKER_COMPOSE_DIR = 'docker-zabbix' // Path to docker-compose.yml
-        DOCKER_SWARM_MANAGER_IP = '192.168.150.58'
-        DOCKER_SWARM_MANAGER_PORT ='2376'
+        DOCKER_COMPOSE_DIR = 'docker-zabbix' // Path to stack files
+        DOCKER_CONTEXT='default' 
+        // Telegram configre
+        TELEGRAM_BOT_TOKEN = credentials('telegramToken')
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')   
     }
     
     stages {
@@ -60,8 +62,8 @@ pipeline {
 
                     dir("${env.DOCKER_COMPOSE_DIR}") {
                         sh  """
-                                CONF_VERSION=${BUILD_NUMBER} docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:${DOCKER_SWARM_MANAGER_PORT} \
-                                stack deploy -c ${composeFile} ${env.DOCKER_STACK_NAME}
+                                docker context use ${env.DOCKER_CONTEXT}
+                                CONF_VERSION=${BUILD_NUMBER} docker stack deploy -c ${composeFile} ${env.DOCKER_STACK_NAME}
                             """ 
                     }
                 }
@@ -74,12 +76,41 @@ pipeline {
             cleanWs()
         }
         success {
-            // Cleanup orphaned secrets
-            sh  """
+            script{
+                // Cleanup orphaned secrets
+                sh  """
                     docker secret ls --format '{{.Name}}'  \
                     | awk '/^POSTGRES_/ && !/^(POSTGRES_PASSWORD_v${BUILD_NUMBER}|POSTGRES_USER_v${BUILD_NUMBER})\$/{print}' \
                     | xargs -I {} docker secret rm {} || true
                 """
+                
+                def message = "✅ *Jenkins Deploy Success*\\n" +
+                              "Job: ${env.JOB_NAME}\\n" +
+                              "Build: #${env.BUILD_NUMBER}\\n" +
+                              "Stack: ${env.DOCKER_STACK_NAME}\\n" +
+                              "URL: ${env.BUILD_URL}"
+                sh """
+                    curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
+                    -d chat_id=${env.TELEGRAM_CHAT_ID} \
+                    -d text="${message}" \
+                    -d parse_mode=MarkdownV2
+                """            
+            }
+        }
+        failure {
+            script {
+                def message = "❌ *Jenkins Deploy Failed*\\n" +
+                              "Job: ${env.JOB_NAME}\\n" +
+                              "Build: #${env.BUILD_NUMBER}\\n" +
+                              "Stack: ${env.DOCKER_STACK_NAME}\\n" +
+                              "URL: ${env.BUILD_URL}"
+                sh """
+                    curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
+                    -d chat_id=${env.TELEGRAM_CHAT_ID} \
+                    -d text="${message}" \
+                    -d parse_mode=MarkdownV2
+                """
+            }
         }
     }
 }
