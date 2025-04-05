@@ -1,11 +1,13 @@
 pipeline {
-    agent {label 'jnlp-agent-docker'}
+    agent {label 'cloud && hetzner'}
     
     environment {
         DOCKER_STACK_NAME = 'zabbix' 
-        DOCKER_COMPOSE_DIR = 'docker-zabbix' // Path to docker-compose.yml
-        DOCKER_SWARM_MANAGER_IP = '192.168.150.58'
-        DOCKER_SWARM_MANAGER_PORT ='2376'
+        DOCKER_COMPOSE_DIR = 'docker-zabbix' // Path to stack files
+        DOCKER_CONTEXT='default' 
+        // Telegram configre
+        TELEGRAM_BOT_TOKEN = credentials('telegramToken')
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')   
     }
     
     stages {
@@ -15,6 +17,39 @@ pipeline {
                 url: 'https://github.com/nazmang/docker.git'
             }
         }
+
+        // stage('Check Changes in DOCKER_COMPOSE_DIR') {
+        //     steps {
+        //         script {
+        //             // Initial checkout 
+        //             def scmVars = checkout([
+        //                 $class: 'GitSCM',
+        //                 branches: [[name: '*/master']],
+        //                 userRemoteConfigs: [[url: 'https://github.com/nazmang/docker.git']],
+        //                 extensions: [
+        //                     [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: "${env.DOCKER_COMPOSE_DIR}/"]]]
+        //                 ]
+        //             ])
+
+        //             // Recieve last and previous commits info 
+        //             def currentCommit = scmVars.GIT_COMMIT
+        //             def previousCommit = scmVars.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: 'HEAD^'
+
+        //             // Check changes between commits 
+        //             def changedFiles = sh(script: "git diff --name-only ${previousCommit} ${currentCommit}", returnStdout: true).trim().split('\n')
+        //             def relevantChanges = changedFiles.any { it.startsWith("${env.DOCKER_COMPOSE_DIR}/") }
+
+        //             if (!relevantChanges) {
+        //                 echo "No changes detected in ${env.DOCKER_COMPOSE_DIR}. Aborting pipeline."
+        //                 currentBuild.result = 'ABORTED'
+        //                 error("No relevant changes detected")
+        //             } else {
+        //                 echo "Changes detected in ${env.DOCKER_COMPOSE_DIR}. Proceeding with pipeline."
+        //             }
+        //         }
+        //     }
+        // }
+
         stage('Create Files') {
             when {
                 changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
@@ -60,8 +95,8 @@ pipeline {
 
                     dir("${env.DOCKER_COMPOSE_DIR}") {
                         sh  """
-                                CONF_VERSION=${BUILD_NUMBER} docker -H tcp://${DOCKER_SWARM_MANAGER_IP}:${DOCKER_SWARM_MANAGER_PORT} \
-                                stack deploy -c ${composeFile} ${env.DOCKER_STACK_NAME}
+                                docker context use ${env.DOCKER_CONTEXT}
+                                CONF_VERSION=${BUILD_NUMBER} docker stack deploy -c ${composeFile} ${env.DOCKER_STACK_NAME}
                             """ 
                     }
                 }
@@ -74,12 +109,41 @@ pipeline {
             cleanWs()
         }
         success {
-            // Cleanup orphaned secrets
-            sh  """
+            script{
+                // Cleanup orphaned secrets
+                sh  """
                     docker secret ls --format '{{.Name}}'  \
                     | awk '/^POSTGRES_/ && !/^(POSTGRES_PASSWORD_v${BUILD_NUMBER}|POSTGRES_USER_v${BUILD_NUMBER})\$/{print}' \
                     | xargs -I {} docker secret rm {} || true
                 """
+                
+                def message = "<b>✅ Jenkins Deploy Success</b>\n" +
+                          "Job: ${env.JOB_NAME}\n" +
+                          "Build: #${env.BUILD_NUMBER}\n" +
+                          "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                          "URL: <a href='${env.BUILD_URL}'>Link</a>"
+                sh """
+                    curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
+                    -d chat_id=${env.TELEGRAM_CHAT_ID} \
+                    -d text="${message}" \
+                    -d parse_mode=HTML
+                """
+            }
+        }
+        failure {
+            script {
+                def message = "<b>❌ Jenkins Deploy Failed</b>\n" +
+                          "Job: ${env.JOB_NAME}\n" +
+                          "Build: #${env.BUILD_NUMBER}\n" +
+                          "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                          "URL: <a href='${env.BUILD_URL}'>Link</a>"
+                sh """
+                    curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
+                    -d chat_id=${env.TELEGRAM_CHAT_ID} \
+                    -d text="${message}" \
+                    -d parse_mode=HTML
+                """
+            }
         }
     }
 }
