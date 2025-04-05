@@ -62,6 +62,7 @@ pipeline {
                             """ 
                         env.DEPLOY_EXECUTED = 'true'    
                     }
+                    echo "Flag value is: ${env.DEPLOY_EXECUTED}" 
                 }
             }
         }
