@@ -1,104 +1,75 @@
-pipeline {
-    agent { label 'cloud && hetzner'  }
+version: "3.8"
 
-    environment {
-        CLOUDFLARED_TAG = '2025.4.0'
-        DOCKER_COMPOSE_DIR = 'docker-jenkins'
-        DOCKER_STACK_NAME = 'jenkins'
-        ETCD_DATA_PATH = '/data/etcd_data'
-        JENKINS_AGENT_TAG = 'latest-jdk21'
-        JENKINS_HOME_PATH = '/data/jenkins_home/jenkins_local'
-        JENKINS_SECRET = credentials('JENKINS_AGENT_SECRET')
-        JENKINS_TAG = 'latest-jdk21'
-        LETSENCRYPT_HOST = 'example.com'
-        TUNNEL_TOKEN = credentials('CLOUDFLARE_TUNNEL_TOKEN')
-        VIRTUAL_HOST = 'example.com'
-        VIRTUAL_PORT = 8080
-        LETSENCRYPT_EMAIL = 'admin@example.com'
-    }
+services:
+  jenkins:
+    image: jenkins/jenkins:${JENKINS_TAG:-latest}
+    user: root
+    ports:
+      - 8080:8080
+      - 50000:50000
+    networks:
+      - jenkins_net
+    environment:
+      - VIRTUAL_HOST=${VIRTUAL_HOST}
+      - LETSENCRYPT_HOST=${LETSENCRYPT_HOST}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - VIRTUAL_PORT=8080
+      - TZ=Europe/Moscow
+      - 'JAVA_OPTS=-Djava.util.logging.SimpleFormatter.format="[%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS] %4$s: %2$s - %5$s %6$s%n"'
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    deploy:
+      placement:
+        constraints:
+          - "node.role==worker"
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: pause
 
-   
-//    options {
-//        skipDefaultCheckout()
-//    }
+  jenkins-agent:
+    image: jenkins/agent:${JENKINS_AGENT_TAG:-latest}
+    command:
+      [
+        "java",
+        "-jar",
+        "/usr/share/jenkins/slave.jar",
+        "-name",
+        "jenkins-agent",
+        "-url",
+        "http://jenkins:8080/",
+        "-secret",
+        "${JENKINS_SECRET}",
+        "-webSocket",
+      ]
+    init: true
+    stdin_open: true
+    tty: true
+    networks:
+      - jenkins_net
+    environment:
+      - "JENKINS_URL=http://jenkins:8080"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    deploy:
+      placement:
+        constraints:
+          - "node.role==worker"
+      update_config:
+        delay: 10s
+        order: start-first
 
-    stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'master',
-                    url: 'https://github.com/nazmang/docker.git'
-            }
-        }
-        
-        stage('Check Changes in DOCKER_COMPOSE_DIR') {
-            steps {
-                script {
-                    // Initial checkout 
-                    def scmVars = checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: '*/master']],
-                        userRemoteConfigs: [[url: 'https://github.com/nazmang/docker.git']],
-                        extensions: [
-                            [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: "${env.DOCKER_COMPOSE_DIR}/"]]]
-                        ]
-                    ])
+networks:
+  jenkins_net:
+    driver: overlay
+    attachable: true
 
-                    // Recieve last and previous commits info 
-                    def currentCommit = scmVars.GIT_COMMIT
-                    def previousCommit = scmVars.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: 'HEAD^'
-
-                    // Check changes between commits 
-                    def changedFiles = sh(script: "git diff --name-only ${previousCommit} ${currentCommit}", returnStdout: true).trim().split('\n')
-                    def relevantChanges = changedFiles.any { it.startsWith("${env.DOCKER_COMPOSE_DIR}/") }
-
-                    if (!relevantChanges) {
-                        echo "No changes detected in ${env.DOCKER_COMPOSE_DIR}. Aborting pipeline."
-                        currentBuild.result = 'ABORTED'
-                        error("No relevant changes detected")
-                    } else {
-                        echo "Changes detected in ${env.DOCKER_COMPOSE_DIR}. Proceeding with pipeline."
-                    }
-                }
-            }
-        }
-
-        stage('Create Files') {
-            steps {
-                script {
-                    def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"                   
-
-                    def envContent = """
-                    CLOUDFLARED_TAG=${env.CLOUDFLARED_TAG}
-                    ETCD_DATA_PATH=${env.ETCD_DATA_PATH}
-                    JENKINS_HOME_PATH=${env.JENKINS_HOME_PATH}
-                    JENKINS_AGENT_TAG=${env.JENKINS_AGENT_TAG}
-                    JENKINS_TAG=${env.JENKINS_TAG}
-                    JENKINS_SECRET=${env.JENKINS_SECRET}
-                    LETSENCRYPT_EMAIL=${env.LETSENCRYPT_EMAIL}
-                    LETSENCRYPT_HOST=${env.LETSENCRYPT_HOST}
-                    TUNNEL_TOKEN=${env.TUNNEL_TOKEN}
-                    VIRTUAL_HOST=${env.VIRTUAL_HOST}
-                    VIRTUAL_PORT=${env.VIRTUAL_PORT}
-                    """
-                    writeFile file: "${composeDir}/.env", text: envContent
-                }
-            }
-        }
-
-        stage('Deploy stack') {
-            steps {
-                script {
-                    dir("${env.DOCKER_COMPOSE_DIR}") {
-                        sh "make -f Makefile -e deploy-all STACK_NAME=${env.DOCKER_STACK_NAME}"
-                    }
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            cleanWs()
-        }
-    }
-}
+volumes:
+  jenkins_home:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "${JENKINS_HOME_PATH}"

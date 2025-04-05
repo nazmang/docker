@@ -65,21 +65,23 @@ pipeline {
         stage('Create Files') {
             steps {
                 script {
-                    def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"                   
+                    def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
+                    writeFile file: "${composeDir}/secret-file", text: env.JENKINS_SECRET
 
+                    def safeTunnelToken = env.TUNNEL_TOKEN.replaceAll('\n', '\\\\n').replaceAll(':', '\\:')
                     def envContent = """
                     CLOUDFLARED_TAG=${env.CLOUDFLARED_TAG}
                     ETCD_DATA_PATH=${env.ETCD_DATA_PATH}
                     JENKINS_HOME_PATH=${env.JENKINS_HOME_PATH}
                     JENKINS_AGENT_TAG=${env.JENKINS_AGENT_TAG}
                     JENKINS_TAG=${env.JENKINS_TAG}
-                    JENKINS_SECRET=${env.JENKINS_SECRET}
-                    LETSENCRYPT_EMAIL=${env.LETSENCRYPT_EMAIL}
-                    LETSENCRYPT_HOST=${env.LETSENCRYPT_HOST}
-                    TUNNEL_TOKEN=${env.TUNNEL_TOKEN}
-                    VIRTUAL_HOST=${env.VIRTUAL_HOST}
+                    LETSENCRYPT_EMAIL="${env.LETSENCRYPT_EMAIL}"
+                    LETSENCRYPT_HOST="${env.LETSENCRYPT_HOST}"
+                    TUNNEL_TOKEN="${safeTunnelToken}"
+                    VIRTUAL_HOST="${env.VIRTUAL_HOST}"
                     VIRTUAL_PORT=${env.VIRTUAL_PORT}
                     """
+                    echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent
                 }
             }
