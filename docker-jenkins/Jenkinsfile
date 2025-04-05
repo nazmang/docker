@@ -15,7 +15,6 @@ pipeline {
         VIRTUAL_HOST = 'example.com'
         VIRTUAL_PORT = 8080
         LETSENCRYPT_EMAIL = 'admin@example.com'
-
     }
 
    
@@ -66,9 +65,7 @@ pipeline {
         stage('Create Files') {
             steps {
                 script {
-                    def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
-
-                    writeFile file: "${composeDir}/secret-file", text: env.JENKINS_SECRET
+                    def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"                   
 
                     def envContent = """
                     CLOUDFLARED_TAG=${env.CLOUDFLARED_TAG}
@@ -76,6 +73,7 @@ pipeline {
                     JENKINS_HOME_PATH=${env.JENKINS_HOME_PATH}
                     JENKINS_AGENT_TAG=${env.JENKINS_AGENT_TAG}
                     JENKINS_TAG=${env.JENKINS_TAG}
+                    JENKINS_SECRET=${env.JENKINS_SECRET}
                     LETSENCRYPT_EMAIL=${env.LETSENCRYPT_EMAIL}
                     LETSENCRYPT_HOST=${env.LETSENCRYPT_HOST}
                     TUNNEL_TOKEN=${env.TUNNEL_TOKEN}

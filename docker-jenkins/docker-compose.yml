@@ -38,8 +38,6 @@ services:
         "jenkins-agent",
         "-url",
         "http://jenkins:8080/",
-        "-secret",
-        "@/run/secrets/jenkins_secret",
         "-webSocket",
       ]
     init: true
@@ -51,8 +49,6 @@ services:
       - "JENKINS_URL=http://jenkins:8081"
     volumes:
       - /etc/localtime:/etc/localtime:ro
-    secrets:
-      - jenkins_secret
     deploy:
       placement:
         constraints:
@@ -60,10 +56,6 @@ services:
       update_config:
         delay: 10s
         order: start-first
-
-secrets:
-  jenkins_secret:
-    file: ./secret-file
 
 networks:
   jenkins_net:
