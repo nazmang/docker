@@ -17,9 +17,9 @@ services:
           - "node.role==worker"
       resources:
         limits:
-          memory: 128M
+          memory: 512M
         reservations:
-          memory: 64M
+          memory: 256M
     networks:
       - monitor-net
     labels:
@@ -87,7 +87,7 @@ services:
       org.label-schema.group: "monitoring"
 
   prometheus:
-    image: prom/prometheus:v2.51.0
+    image: prom/prometheus:v2.33.1
     container_name: prometheus
     deploy:
       mode: replicated
@@ -97,9 +97,9 @@ services:
           - "node.role==manager"
       resources:
         limits:
-          memory: 1.5G
+          memory: 2G
         reservations:
-          memory: 128M
+          memory: 1G
     volumes:
       - prometheus_config:/etc/prometheus
       - prometheus_data:/prometheus
