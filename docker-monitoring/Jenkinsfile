@@ -8,20 +8,17 @@ pipeline {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your Docker Compose file
         ADMIN_USER = 'admin' // Default admin user for Grafana
         ADMIN_PASSWORD = 'admin' // Default admin password for Grafana
-        SLACK_URL = 'https://hooks.slack.com/services/TOKEN' // Slack webhook URL for Alertmanager
-        SLACK_CHANNEL = 'general' // Slack channel for alerts
-        SLACK_USER = 'alertmanager' // Slack username for alerts
+        // SLACK_URL = 'https://hooks.slack.com/services/TOKEN' // Slack webhook URL for Alertmanager
+        // SLACK_CHANNEL = 'general' // Slack channel for alerts
+        // SLACK_USER = 'alertmanager' // Slack username for alerts
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'master',
-                url: 'https://github.com/nazmang/docker.git'
-            }
-        }
-
+        
         stage('Deploy Monitoring Stack') {
+            when {
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+            }
             steps {
                 dir("${env.DOCKER_COMPOSE_DIR}"){
                     // Deploy the stack using docker stack deploy
