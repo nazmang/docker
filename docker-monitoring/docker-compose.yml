@@ -97,13 +97,12 @@ services:
           - "node.role==manager"
       resources:
         limits:
-          memory: 2G
+          memory: 3G
         reservations:
-          memory: 1G
+          memory: 1.5G
     volumes:
       - prometheus_config:/etc/prometheus
       - prometheus_data:/prometheus
-      # - /var/run/docker.sock:/var/run/docker.sock:ro
     user: 65534:999
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -112,6 +111,7 @@ services:
       - "--web.console.templates=/etc/prometheus/consoles"
       - "--storage.tsdb.retention.time=2d"
       - "--web.enable-lifecycle"
+      - "--enable-feature=memory-snapshot-on-shutdown"
     ports:
       - 9090:9090
     networks:
