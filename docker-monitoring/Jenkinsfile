@@ -4,7 +4,7 @@ def deployExecuted = false
 
 pipeline {
     agent { label 'swarm && local' } // Ensure the agent has Docker and Swarm mode enabled
-
+    
     environment {
         // Define environment variables for the stack
         DOCKER_STACK_NAME = 'monitoring'
@@ -18,7 +18,6 @@ pipeline {
     }
 
     stages {
-
         stage('Create Files') {
              when {
                 changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
@@ -51,7 +50,9 @@ pipeline {
                         export \$(grep -v '^#' .env | xargs) && envsubst < ${env.DOCKER_COMPOSE_FILE} | docker stack deploy -c - ${env.DOCKER_STACK_NAME}
                     """
                 }
-                deployExecuted = true
+                script {
+                    deployExecuted = true
+                }
             }
         }
     }
