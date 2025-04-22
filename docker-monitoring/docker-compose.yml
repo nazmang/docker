@@ -8,8 +8,8 @@ services:
     volumes:
       - grafana:/var/lib/grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
     deploy:
       placement:
@@ -87,7 +87,7 @@ services:
       org.label-schema.group: "monitoring"
 
   prometheus:
-    image: prom/prometheus:v2.33.1
+    image: prom/prometheus:v2.53.4
     container_name: prometheus
     deploy:
       mode: replicated
@@ -97,13 +97,12 @@ services:
           - "node.role==manager"
       resources:
         limits:
-          memory: 2G
+          memory: 3G
         reservations:
-          memory: 1G
+          memory: 1.5G
     volumes:
       - prometheus_config:/etc/prometheus
       - prometheus_data:/prometheus
-      # - /var/run/docker.sock:/var/run/docker.sock:ro
     user: 65534:999
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -112,6 +111,7 @@ services:
       - "--web.console.templates=/etc/prometheus/consoles"
       - "--storage.tsdb.retention.time=2d"
       - "--web.enable-lifecycle"
+      - "--enable-feature=memory-snapshot-on-shutdown"
     ports:
       - 9090:9090
     networks:
