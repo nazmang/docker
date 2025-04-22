@@ -22,7 +22,7 @@ pipeline {
         // }
         stage('Create Files') {
              when {
--                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
              }
             steps {
                 script {
@@ -42,7 +42,7 @@ pipeline {
 
         stage('Deploy Monitoring Stack') {
              when {
--                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
              }
             steps {
                 dir("${env.DOCKER_COMPOSE_DIR}"){
