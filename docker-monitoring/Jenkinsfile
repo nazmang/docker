@@ -1,3 +1,7 @@
+@Library('jenkins-telegram-notify') _
+
+def deployExecuted = false
+
 pipeline {
     agent { label 'swarm && local' } // Ensure the agent has Docker and Swarm mode enabled
 
@@ -14,12 +18,7 @@ pipeline {
     }
 
     stages {
-        // stage('Checkout') {
-        //     steps {
-        //         git branch: 'master',
-        //         url: 'https://github.com/nazmang/docker.git'
-        //     }
-        // }
+        
         stage('Create Files') {
              when {
                 changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
@@ -52,19 +51,38 @@ pipeline {
                         export \$(grep -v '^#' .env | xargs) && envsubst < ${env.DOCKER_COMPOSE_FILE} | docker stack deploy -c - ${env.DOCKER_STACK_NAME}
                     """
                 }
+                deployExecuted = true
             }
         }
     }
 
     post {
         success {
-            echo "Monitoring stack deployed successfully!"
+            script {
+                if (deployExecuted) {
+                    def message = "✅ *Monitoring Deploy Success*\n" +
+                                  "Job: ${env.JOB_NAME}\n" +
+                                  "Build: #${env.BUILD_NUMBER}\n" +
+                                  "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                                  "URL: ${env.BUILD_URL}"
+                    telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message)
+                } else {
+                    echo "Deploy stack was not executed, skipping Telegram notification."
+                }
+            }
         }
         failure {
-            echo "Failed to deploy the monitoring stack."
+            script {
+                def message = "❌ *Monitoring Deploy Failed*\n" +
+                              "Job: ${env.JOB_NAME}\n" +
+                              "Build: #${env.BUILD_NUMBER}\n" +
+                              "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                              "URL: ${env.BUILD_URL}"
+                telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message)
+            }
         }
         always {
-            cleanWs() // Clean the workspace after the build
+            cleanWs()
         }
     }
 }
