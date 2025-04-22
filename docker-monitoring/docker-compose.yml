@@ -8,8 +8,8 @@ services:
     volumes:
       - grafana:/var/lib/grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
     deploy:
       placement:
@@ -87,7 +87,7 @@ services:
       org.label-schema.group: "monitoring"
 
   prometheus:
-    image: prom/prometheus:v2.33.1
+    image: prom/prometheus:v2.53.4
     container_name: prometheus
     deploy:
       mode: replicated
