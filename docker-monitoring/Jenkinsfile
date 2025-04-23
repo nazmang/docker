@@ -9,12 +9,18 @@ pipeline {
         // Define environment variables for the stack
         DOCKER_STACK_NAME = 'monitoring'
         DOCKER_COMPOSE_DIR = 'docker-monitoring' // Path to docker-compose.yml
-        DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your Docker Compose file
+        DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your main Docker Compose file
+        // Grafana params
         GF_SECURITY_ADMIN_USER = "${params.GF_ADMIN_USER}" // Default admin user for Grafana
         GF_SECURITY_ADMIN_PASSWORD = "${params.GF_ADMIN_PASSWORD}" // Default admin password for Grafana    
+        // Image tags 
         GRAFANA_TAG="10.3.5"
         PROM_TAG="v2.53.4"
         ALERTMGR_TAG="v0.26.0"
+        // Telegram configre
+        TELEGRAM_BOT_TOKEN = credentials('telegramToken')
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')  
+        // Slack params
         // SLACK_URL = 'https://hooks.slack.com/services/TOKEN' // Slack webhook URL for Alertmanager
         // SLACK_CHANNEL = 'general' // Slack channel for alerts
         // SLACK_USER = 'alertmanager' // Slack username for alerts
@@ -30,8 +36,8 @@ pipeline {
                 script {
                     def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
                     def envContent = """
-                    GF_SECURITY_ADMIN_USER=${env.ADMIN_USER}
-                    GF_SECURITY_ADMIN_PASSWORD=${env.ADMIN_PASSWORD}
+                    GF_SECURITY_ADMIN_USER=${env.GF_SECURITY_ADMIN_USER}
+                    GF_SECURITY_ADMIN_PASSWORD=${env.GF_SECURITY_ADMIN_PASSWORD}
                     # SLACK_URL=${env.SLACK_URL}
                     # SLACK_CHANNEL=${env.SLACK_CHANNEL}
                     # SLACK_USER=${env.SLACK_USER}
@@ -39,7 +45,7 @@ pipeline {
                     PROM_TAG=${env.PROM_TAG}
                     ALERTMGR_TAG=${env.ALERTMGR_TAG}
                     """
-                    echo "Generated .env content:\n${envContent}"
+                    // echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent
                 }
             }
