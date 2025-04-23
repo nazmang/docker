@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  cadvisor:
+    image: nazman/cadvisor:v0.49.1
+    command: --logtostderr=true
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - monitoring_net
+    ports:
+      - 8080:8080
+    labels:
+      org.label-schema.group: "monitoring"
+
+networks:
+  monitoring_net:
+    name: monitoring_monitoring_net
+    external: true

@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  nodeexporter:
+    image: prom/node-exporter:v1.7.0
+    environment:
+      - NODE_ID={{.Node.ID}}
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /etc/hostname:/etc/nodename
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)"
+      - "--no-collector.ipvs"
+    networks:
+      - monitoring_net
+    ports:
+      - 9100:9100
+    labels:
+      org.label-schema.group: "monitoring"
+
+networks:
+  monitoring_net:
+    name: monitoring_monitoring_net
+    external: true
