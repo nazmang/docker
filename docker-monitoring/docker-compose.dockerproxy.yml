@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  dockerproxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:latest
+    deploy:
+      placement:
+        constraints:
+          - "node.role==manager"
+    environment:
+      - CONTAINERS=1
+      - SERVICES=1
+      - TASKS=1
+      - NODES=1
+      - POST=0
+      - SWARM=1
+      - NETWORKS=1
+      - VOLUMES=1
+    ports:
+      - 127.0.0.1:2375:2375
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - monitoring_net
+    labels:
+      org.label-schema.group: "monitoring"
+
+networks:
+  monitoring_net:
+    name: monitoring_monitoring_net
+    external: true
