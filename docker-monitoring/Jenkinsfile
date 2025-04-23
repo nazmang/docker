@@ -35,9 +35,9 @@ pipeline {
                     # SLACK_URL=${env.SLACK_URL}
                     # SLACK_CHANNEL=${env.SLACK_CHANNEL}
                     # SLACK_USER=${env.SLACK_USER}
-                    GRAFANA_TAG=10.3.5
-                    PROM_TAG=v2.53.4
-                    ALERTMGR_TAG=v0.26.0
+                    GRAFANA_TAG=${env.GRAFANA_TAG}
+                    PROM_TAG=${env.PROM_TAG}
+                    ALERTMGR_TAG=${env.ALERTMGR_TAG}
                     """
                     echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent
