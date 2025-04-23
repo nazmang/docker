@@ -11,10 +11,10 @@ pipeline {
         DOCKER_COMPOSE_DIR = 'docker-monitoring' // Path to docker-compose.yml
         DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your Docker Compose file
         GF_SECURITY_ADMIN_USER = "${params.GF_ADMIN_USER}" // Default admin user for Grafana
-        GF_SECURITY_ADMIN_PASSWORD = "${params.GF_ADMIN_PASSWORD}" // Default admin password for Grafana
-        GRAFANA_TAG=10.3.5
-        PROM_TAG=v2.53.4
-        ALERTMGR_TAG=v0.26.0
+        GF_SECURITY_ADMIN_PASSWORD = "${params.GF_ADMIN_PASSWORD}" // Default admin password for Grafana    
+        GRAFANA_TAG="10.3.5"
+        PROM_TAG="v2.53.4"
+        ALERTMGR_TAG="v0.26.0"
         // SLACK_URL = 'https://hooks.slack.com/services/TOKEN' // Slack webhook URL for Alertmanager
         // SLACK_CHANNEL = 'general' // Slack channel for alerts
         // SLACK_USER = 'alertmanager' // Slack username for alerts
