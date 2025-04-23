@@ -12,9 +12,12 @@ pipeline {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your Docker Compose file
         GF_SECURITY_ADMIN_USER = "${params.GF_ADMIN_USER}" // Default admin user for Grafana
         GF_SECURITY_ADMIN_PASSWORD = "${params.GF_ADMIN_PASSWORD}" // Default admin password for Grafana
-        SLACK_URL = 'https://hooks.slack.com/services/TOKEN' // Slack webhook URL for Alertmanager
-        SLACK_CHANNEL = 'general' // Slack channel for alerts
-        SLACK_USER = 'alertmanager' // Slack username for alerts
+        GRAFANA_TAG=10.3.5
+        PROM_TAG=v2.53.4
+        ALERTMGR_TAG=v0.26.0
+        // SLACK_URL = 'https://hooks.slack.com/services/TOKEN' // Slack webhook URL for Alertmanager
+        // SLACK_CHANNEL = 'general' // Slack channel for alerts
+        // SLACK_USER = 'alertmanager' // Slack username for alerts
     }
 
     stages {
@@ -29,9 +32,12 @@ pipeline {
                     def envContent = """
                     GF_SECURITY_ADMIN_USER=${env.ADMIN_USER}
                     GF_SECURITY_ADMIN_PASSWORD=${env.ADMIN_PASSWORD}
-                    SLACK_URL=${env.SLACK_URL}
-                    SLACK_CHANNEL=${env.SLACK_CHANNEL}
-                    SLACK_USER=${env.SLACK_USER}
+                    # SLACK_URL=${env.SLACK_URL}
+                    # SLACK_CHANNEL=${env.SLACK_CHANNEL}
+                    # SLACK_USER=${env.SLACK_USER}
+                    GRAFANA_TAG=10.3.5
+                    PROM_TAG=v2.53.4
+                    ALERTMGR_TAG=v0.26.0
                     """
                     echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent
@@ -43,15 +49,12 @@ pipeline {
              when {
                 changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
              }
-            steps {
-                dir("${env.DOCKER_COMPOSE_DIR}"){
-                    // Deploy the stack using docker stack deploy
-                    sh """                       
-                        # Deploy the stack
-                        export \$(grep -v '^#' .env | xargs) && envsubst < ${env.DOCKER_COMPOSE_FILE} | docker stack deploy -c - ${env.DOCKER_STACK_NAME}
-                    """
-                }
+            steps {                
                 script {
+                    dir("${env.DOCKER_COMPOSE_DIR}"){
+                        // Deploy the stack using docker stack deploy
+                        sh "make -f Makefile -e deploy-all STACK_NAME=${env.DOCKER_STACK_NAME}"                    
+                    }
                     deployExecuted = true
                 }
             }
