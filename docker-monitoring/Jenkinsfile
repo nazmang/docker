@@ -75,7 +75,7 @@ pipeline {
                                   "Job: ${env.JOB_NAME}\n" +
                                   "Build: #${env.BUILD_NUMBER}\n" +
                                   "Stack: ${env.DOCKER_STACK_NAME}\n" +
-                                  "URL: ${env.BUILD_URL}"
+                                  "URL: <a href=\"${env.BUILD_URL}\">Link</a>"
                     telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message, 'HTML')
                 } else {
                     echo "Deploy stack was not executed, skipping Telegram notification."
@@ -88,7 +88,7 @@ pipeline {
                           "Job: ${env.JOB_NAME}\n" +
                           "Build: #${env.BUILD_NUMBER}\n" +
                           "Stack: ${env.DOCKER_STACK_NAME}\n" +
-                          "URL: <a href='${env.BUILD_URL}'>Link</a>"
+                          "URL: <a href=\"${env.BUILD_URL}\">Link</a>"
                 telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message, 'HTML')
             }
         }
