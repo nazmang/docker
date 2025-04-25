@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  fluent-bit:
+    image: cr.fluentbit.io/fluent/fluent-bit:2.2
+    deploy:
+      mode: global
+      resources:
+        limits:
+          memory: 100M
+        reservations:
+          memory: 50M
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/log:/var/log:ro
+      - /etc/fluent-bit:/fluent-bit/etc
+    configs:
+      - source: fluent-bit-config
+        target: /fluent-bit/etc/fluent-bit.conf
+    logging:
+      driver: "json-file"
+    restart: always
+
+configs:
+  fluent-bit-config:
+    file: ./fluent-bit.conf

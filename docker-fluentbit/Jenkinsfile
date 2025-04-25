@@ -1,0 +1,64 @@
+@Library('jenkins-telegram-notify') _
+
+def deployExecuted = false
+
+pipeline {
+    agent { label 'cloud && hetzner' } // Ensure the agent has Docker and Swarm mode enabled
+    
+    environment {
+        // Define environment variables for the stack
+        DOCKER_STACK_NAME = 'fluentbit'
+        DOCKER_COMPOSE_DIR = 'docker-fluentbit' // Path to docker-compose.yml
+        DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your main Docker Compose file
+        // Telegram configre
+        TELEGRAM_BOT_TOKEN = credentials('telegramToken')
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')  
+    }
+
+    stages {
+        stage('Deploy Fluentbit Stack') {
+             when {
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+             }
+            steps {                
+                script {
+                    dir("${env.DOCKER_COMPOSE_DIR}"){
+                        // Deploy the stack using docker stack deploy
+                        sh "make -f Makefile -e deploy-all STACK_NAME=${env.DOCKER_STACK_NAME}"                    
+                    }
+                    deployExecuted = true
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                if (deployExecuted) {
+                    def message = "✅ <b>Fluentbit Deploy Success</b>\n" +
+                                  "Job: ${env.JOB_NAME}\n" +
+                                  "Build: #${env.BUILD_NUMBER}\n" +
+                                  "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                                  "URL: <a href=\"${env.BUILD_URL}\">Link</a>"
+                    telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message, 'HTML')
+                } else {
+                    echo "Deploy stack was not executed, skipping Telegram notification."
+                }
+            }
+        }
+        failure {
+            script {
+                def message = "❌ <b>Fluentbit Deploy Failed</b>\n" +
+                          "Job: ${env.JOB_NAME}\n" +
+                          "Build: #${env.BUILD_NUMBER}\n" +
+                          "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                          "URL: <a href=\"${env.BUILD_URL}\">Link</a>"
+                telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message, 'HTML')
+            }
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
