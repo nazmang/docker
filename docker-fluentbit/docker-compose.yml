@@ -13,7 +13,6 @@ services:
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/log:/var/log:ro
-      - /etc/fluent-bit:/fluent-bit/etc
     configs:
       - source: fluent-bit-config
         target: /fluent-bit/etc/fluent-bit.conf
