@@ -3,6 +3,7 @@
 def deployExecuted = false
 
 pipeline {
+
     agent { label 'swarm && local' } // Ensure the agent has Docker and Swarm mode enabled
     
     environment {
