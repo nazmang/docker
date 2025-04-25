@@ -7,8 +7,8 @@ services:
       - 9187:9187
     networks:
       - zabbix-net
-    depends_on:
-      - postgres-zabbix
+    env_file:
+      - start.env
     environment:
       DATA_SOURCE_USER_FILE: /run/secrets/POSTGRES_USER
       DATA_SOURCE_PASS_FILE: /run/secrets/POSTGRES_PASSWORD
