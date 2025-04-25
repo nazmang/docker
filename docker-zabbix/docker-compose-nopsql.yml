@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.15.0
+    image: prometheuscommunity/postgres-exporter:v0.17.1
     ports:
       - 9187:9187
     networks:
@@ -74,29 +74,29 @@ services:
     ports:
       - target: 10050
         published: 10050
-        protocol: tcp        
+        protocol: tcp
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /etc/zabbix:/etc/zabbix/zabbix_agentd.d:ro     
+      - /etc/zabbix:/etc/zabbix/zabbix_agentd.d:ro
     tmpfs: /tmp
     deploy:
       mode: global
-      restart_policy:   
+      restart_policy:
         condition: on-failure
         delay: 3s
         max_attempts: 5
-        window: 60s  
-      placement:        
+        window: 60s
+      placement:
         constraints:
-         - node.platform.arch==x86_64
-         - node.labels.location == cloud
+          - node.platform.arch==x86_64
+          - node.labels.location == cloud
       resources:
         limits:
           cpus: "0.2"
           memory: 128M
         reservations:
           cpus: "0.1"
-          memory: 64M    
+          memory: 64M
     privileged: true
     pid: "host"
     networks:
