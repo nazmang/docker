@@ -3,7 +3,8 @@
 def deployExecuted = false
 
 pipeline {
-    agent { label 'cloud && hetzner' } // Ensure the agent has Docker and Swarm mode enabled
+
+    agent { label 'swarm && local' } // Ensure the agent has Docker and Swarm mode enabled
     
     environment {
         // Define environment variables for the stack
