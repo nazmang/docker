@@ -1,9 +1,9 @@
 # Variables
-STACK_NAME := fluentbit
+STACK_NAME := fluentd
 COMPOSE_FILE := docker-compose.yml
 DOCKER_CONTEXT ?= default  # Default context if not specified
 CONF_VERSION ?= 1
-FLUENT_BIT_DB_PATH ?= /data/fluent-bit
+FLUEND_BUFFER_PATH ?= /data/fluentd
 
 # Default target
 .PHONY: all
@@ -16,9 +16,9 @@ init-swarm:
 
 .PHONY: clean-configs
 clean-configs:
-	@echo "Cleaning up old configs (keeping version suffix fluent-bit_v$(CONF_VERSION))..."
-	@for config in $$(docker config ls --format '{{.Name}}' | grep -e 'fluent-bit.*_v'); do \
-		if echo "$$config" | grep -q "_v$(CONF_VERSION)$$"; then \
+	@echo "Cleaning up old configs (keeping version suffix fluentd-config_v$(CONF_VERSION))..."
+	@for config in $$(docker config ls --format '{{.Name}}' | grep 'fluentd-config_v'); do \
+		if echo "$$config" | grep -q "fluentd-config_v$(CONF_VERSION)$$"; then \
 			echo "Keeping current config: $$config"; \
 		else \
 			echo "Removing outdated config: $$config"; \
@@ -29,21 +29,21 @@ clean-configs:
 
 .PHONY: deploy-service
 deploy-service:	
-	@export CONF_VERSION=$(CONF_VERSION) FLUENT_BIT_DB_PATH=$(FLUENT_BIT_DB_PATH) && \
+	@export CONF_VERSION=$(CONF_VERSION) FLUEND_BUFFER_PATH=$(FLUEND_BUFFER_PATH) && \
 	envsubst < $(COMPOSE_FILE) | docker --context $(DOCKER_CONTEXT) stack deploy -c - $(STACK_NAME)
 	@rm -f /tmp/rendered-compose.yml
 	@echo "${STACK_NAME} $(SERVICE) service deployed to context '$(DOCKER_CONTEXT)'."
 
 
-.PHONY: deploy-fluentbit
-deploy-fluentbit:
-	@$(MAKE) deploy-service SERVICE=fluentbit
+.PHONY: deploy-fluentd
+deploy-fluentd:
+	@$(MAKE) deploy-service SERVICE=fluentd
 	@$(MAKE) clean-configs 
  
 # Deploy full stack
 .PHONY: deploy-all
 deploy-all: init-swarm
-	@$(MAKE) deploy-fluentbit	
+	@$(MAKE) deploy-fluentd	
 	@echo "${STACK_NAME} stack deployed to context '$(DOCKER_CONTEXT)'."
 
 # Check the status of the services
@@ -65,7 +65,7 @@ remove:
 cleanup:
 	@docker --context $(DOCKER_CONTEXT) system prune -f
 
-# View logs of the fluentbit service
+# View logs of the Fluentd service
 .PHONY: logs
 logs:
 	@docker --context $(DOCKER_CONTEXT) service logs $(STACK_NAME)_fluent-bit -f
