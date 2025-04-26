@@ -4,10 +4,8 @@ def deployExecuted = false
 
 pipeline {
 
-    agent { label 'cloud && hetzner' } // Ensure the agent has Docker and Swarm mode enabled
-    parameters {
-        booleanParam(name: 'FORCE_DEPLOY', defaultValue: false, description: 'Force deployment ignoring changeset')
-    }
+    agent { label 'swarm && local' } // Ensure the agent has Docker and Swarm mode enabled
+    
     environment {
         // Define environment variables for the stack
         DOCKER_STACK_NAME = 'fluentbit'
@@ -20,12 +18,9 @@ pipeline {
 
     stages {
         stage('Deploy Fluentbit Stack') {
-            when {
-                anyOf {
-                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
-                    expression { return params.FORCE_DEPLOY }
-                }
-            }
+             when {
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+             }
             steps {                
                 script {
                     dir("${env.DOCKER_COMPOSE_DIR}"){
