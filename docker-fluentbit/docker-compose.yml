@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   fluent-bit:
-    image: cr.fluentbit.io/fluent/fluent-bit:2.2
+    image: fluent/fluent-bit:4.0.1
     deploy:
       mode: global
       resources:
@@ -13,9 +13,12 @@ services:
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/log:/var/log:ro
+      - flb_db:/fluent-bit/db
     configs:
       - source: fluent-bit-config
         target: /fluent-bit/etc/fluent-bit.conf
+      - source: fluent-bit-parsers
+        target: /fluent-bit/etc/parsers.conf
     logging:
       driver: "json-file"
     restart: always
@@ -23,3 +26,15 @@ services:
 configs:
   fluent-bit-config:
     file: ./fluent-bit.conf
+    name: fluent-bit-config_v${CONF_VERSION}
+  fluent-bit-parsers:
+    file: ./parsers.conf
+    name: fluent-bit-parsers_v${CONF_VERSION}
+
+volumes:
+  flb_db:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "${FLUENT_BIT_DB_PATH}"

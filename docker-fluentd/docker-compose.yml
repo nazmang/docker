@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  fluentd:
+    image: fluent/fluentd:v1.16-debian
+    build:
+      context: ./fluentd
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    volumes:
+      - fluentd-buffer:/fluentd/buffer
+    configs:
+      - source: fluentd-config
+        target: /fluentd/etc/fluent.conf
+    environment:
+      - FLUENT_UID=0
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+configs:
+  fluentd-config:
+    file: ./fluentd/fluent.conf
+    name: fluentd-config_v${CONF_VERSION}
+volumes:
+  fluentd-buffer:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "${FLUEND_BUFFER_PATH}"
