@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.19.0
+    container_name: opensearch
+    deploy:
+      placement:
+        constraints:
+          - "node.role==worker"
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 9200:9200
+      - 9600:9600
+    networks:
+      - opensearch-net
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:2.14.0
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601
+    environment:
+      - OPENSEARCH_HOSTS=http://opensearch:9200
+    depends_on:
+      - opensearch
+
+volumes:
+  opensearch-data:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "/data/opensearch_data"
+
+networks:
+  opensearch-net:
