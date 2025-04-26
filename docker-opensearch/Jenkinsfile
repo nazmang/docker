@@ -1,0 +1,82 @@
+@Library('jenkins-telegram-notify') _
+
+def deployExecuted = false
+
+pipeline {
+
+    agent { label 'swarm && local' } // Ensure the agent has Docker and Swarm mode enabled
+    
+    environment {
+        // Define environment variables for the stack
+        DOCKER_STACK_NAME = 'opensearch'
+        DOCKER_COMPOSE_DIR = 'docker-opensearch' // Path to docker-compose.yml
+        DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your main Docker Compose file
+        // Opensearch variables
+        OPENSEARCH_INITIAL_ADMIN_PASSWORD=${params.OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+        // Telegram configre
+        TELEGRAM_BOT_TOKEN = credentials('telegramToken')
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')  
+    }
+
+    stages {
+        stage('Create Files') {
+             when {
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+             }
+            steps {
+                script {
+                    def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
+                    def envContent = """
+                    OPENSEARCH_INITIAL_ADMIN_PASSWORD=${env.OPENSEARCH_INITIAL_ADMIN_PASSWORD}                    
+                    """
+                    // echo "Generated .env content:\n${envContent}"
+                    writeFile file: "${composeDir}/.env", text: envContent
+                }
+            }
+        }
+        stage('Deploy Opensearch Stack') {
+             when {
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+             }
+            steps {                
+                script {
+                    dir("${env.DOCKER_COMPOSE_DIR}"){
+                        // Deploy the stack using docker stack deploy
+                        sh "make -f Makefile -e deploy-all STACK_NAME=${env.DOCKER_STACK_NAME}"                    
+                    }
+                    deployExecuted = true
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                if (deployExecuted) {
+                    def message = "✅ <b>${env.DOCKER_STACK_NAME} Deploy Success</b>\n" +
+                                  "Job: ${env.JOB_NAME}\n" +
+                                  "Build: #${env.BUILD_NUMBER}\n" +
+                                  "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                                  "URL: <a href=\"${env.BUILD_URL}\">Link</a>"
+                    telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message, 'HTML')
+                } else {
+                    echo "Deploy stack was not executed, skipping Telegram notification."
+                }
+            }
+        }
+        failure {
+            script {
+                def message = "❌ <b>${env.DOCKER_STACK_NAME} Deploy Failed</b>\n" +
+                          "Job: ${env.JOB_NAME}\n" +
+                          "Build: #${env.BUILD_NUMBER}\n" +
+                          "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                          "URL: <a href=\"${env.BUILD_URL}\">Link</a>"
+                telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message, 'HTML')
+            }
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
