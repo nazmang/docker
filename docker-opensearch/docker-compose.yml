@@ -16,6 +16,8 @@ services:
       - node.name=opensearch-node
       - bootstrap.memory_lock=true
       - plugins.security.restapi.roles_enabled=["all_access","security_rest_api_access"]
+      - plugins.security.allow_default_init_securityindex=true
+      - plugins.security.authcz.admin_dn=CN=admin,OU=SSL,O=Test,L=Test,C=DE
       - plugins.security.ssl.transport.pemcert_filepath=/usr/share/opensearch/config/certs/node.pem
       - plugins.security.ssl.transport.pemkey_filepath=/usr/share/opensearch/config/certs/node.key
       - plugins.security.ssl.transport.pemtrustedcas_filepath=/usr/share/opensearch/config/certs/ca.pem
@@ -43,6 +45,10 @@ services:
 
   dashboards:
     image: opensearchproject/opensearch-dashboards:2.19.0
+    deploy:
+      placement:
+        constraints:
+          - "node.labels.platform==vmware"
     ports:
       - 5601:5601
     env_file:
