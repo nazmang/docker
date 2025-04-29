@@ -29,16 +29,23 @@ services:
       - plugins.security.ssl.http.pemtrustedcas_filepath=/usr/share/opensearch/config/certs/ca.pem
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - "DISABLE_SECURITY_PLUGIN=false"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
       - "DISABLE_INSTALL_DEMO_CONFIG=true"
     ulimits:
       memlock:
         soft: -1
         hard: -1
+      nofile:
+        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
+        hard: 65536
     ports:
       - 9200:9200
       - 9600:9600
     networks:
       - opensearch-net
+    configs:
+      - source: opensearch_config
+        target: /usr/share/opensearch/config/opensearch.yml
     volumes:
       - opensearch-data:/usr/share/opensearch/data
       - opensearch-certs:/usr/share/opensearch/config/certs
@@ -75,6 +82,9 @@ volumes:
       type: "none"
       o: "bind"
       device: "/data/opensearch_config/certs"
+
+configs:
+  opensearch_config:
 
 networks:
   opensearch-net:
