@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   opensearch:
-    image: opensearchproject/opensearch:2.9.0
+    image: opensearchproject/opensearch:2.19.0
     deploy:
       placement:
         constraints:
@@ -16,15 +16,15 @@ services:
       - node.name=opensearch-node
       - bootstrap.memory_lock=true
       - plugins.security.restapi.roles_enabled=["all_access","security_rest_api_access"]
-      - plugins.security.ssl.transport.pemcert_filepath=/usr/share/opensearch/data/config/certs/node.pem
-      - plugins.security.ssl.transport.pemkey_filepath=/usr/share/opensearch/data/config/certs/node.key
-      - plugins.security.ssl.transport.pemtrustedcas_filepath=/usr/share/opensearch/data/config/certs/ca.pem
+      - plugins.security.ssl.transport.pemcert_filepath=/usr/share/opensearch/config/certs/node.pem
+      - plugins.security.ssl.transport.pemkey_filepath=/usr/share/opensearch/config/certs/node.key
+      - plugins.security.ssl.transport.pemtrustedcas_filepath=/usr/share/opensearch/config/certs/ca.pem
       - plugins.security.ssl.transport.enforce_hostname_verification=false
       - plugins.security.ssl.transport.enabled=true
       - plugins.security.ssl.http.enabled=true
-      - plugins.security.ssl.http.pemcert_filepath=/usr/share/opensearch/data/config/certs/node.pem
-      - plugins.security.ssl.http.pemkey_filepath=/usr/share/opensearch/data/config/certs/node.key
-      - plugins.security.ssl.http.pemtrustedcas_filepath=/usr/share/opensearch/data/config/certs/ca.pem
+      - plugins.security.ssl.http.pemcert_filepath=/usr/share/opensearch/config/certs/node.pem
+      - plugins.security.ssl.http.pemkey_filepath=/usr/share/opensearch/config/certs/node.key
+      - plugins.security.ssl.http.pemtrustedcas_filepath=/usr/share/opensearch/config/certs/ca.pem
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - "DISABLE_SECURITY_PLUGIN=false"
       - "DISABLE_INSTALL_DEMO_CONFIG=true"
@@ -39,10 +39,10 @@ services:
       - opensearch-net
     volumes:
       - opensearch-data:/usr/share/opensearch/data
-      # - opensearch-certs:/usr/share/opensearch/data/config/certs
+      - opensearch-certs:/usr/share/opensearch/config/certs
 
   dashboards:
-    image: opensearchproject/opensearch-dashboards:2.9.0
+    image: opensearchproject/opensearch-dashboards:2.19.0
     ports:
       - 5601:5601
     env_file:
@@ -68,7 +68,7 @@ volumes:
     driver_opts:
       type: "none"
       o: "bind"
-      device: "/data/opensearch_certs"
+      device: "/data/opensearch_config/certs"
 
 networks:
   opensearch-net:
