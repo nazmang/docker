@@ -1,0 +1,43 @@
+service:
+  flush: 5
+  log_level: info
+  parsers_file: /fluent-bit/etc/parsers.conf
+
+inputs:
+  - name: tail
+    path: /var/lib/docker/containers/*/*.log
+    exclude_path: /var/lib/docker/containers/*_fluentd-*.log
+    parser: docker
+    tag: swarm.*
+    refresh_interval: 5
+    mem_buf_limit: 10MB
+    skip_long_lines: true
+    # db: /fluent-bit/db/flb_swarmlogs.db
+
+filters:
+  - name: grep
+    match: "*"
+    regex:
+      - log
+
+  - name: grep
+    match: swarm.*
+    exclude:
+      - container_name ^(fluentd|fluent-bit|portainer)
+
+  - name: parser
+    match: "*"
+    key_name: log
+    parser: json
+
+  - name: parser
+    match: "*"
+    key_name: log
+    parser: log_parser
+    reserve_data: true
+
+outputs:
+  - name: forward
+    match: "*"
+    host: fluentd.comintern.local
+    port: 24224
