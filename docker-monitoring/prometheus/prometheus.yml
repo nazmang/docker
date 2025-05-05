@@ -11,7 +11,7 @@ global:
 rule_files:
   - "rules/alert.rules.yml"
   - "rules/postgres.alert.rules.yml"
-  - "rules/jenkins.rules.yml"
+  #  - "rules/jenkins.rules.yml"
   - "rules/zabbix.rules.yml"
 
 # A scrape configuration containing exactly one endpoint to scrape.
