@@ -5,10 +5,10 @@ services:
     image: jenkins/jenkins:${JENKINS_TAG:-latest}
     user: root
     ports:
-      - 8080:8080
       - 50000:50000
     networks:
       - jenkins_net
+      - gw_net
     environment:
       - VIRTUAL_HOST=${VIRTUAL_HOST}
       - LETSENCRYPT_HOST=${LETSENCRYPT_HOST}
@@ -65,6 +65,9 @@ networks:
   jenkins_net:
     driver: overlay
     attachable: true
+  gw_net:
+    external: true
+    name: gateway_gw_net
 
 volumes:
   jenkins_home:
