@@ -12,8 +12,14 @@ all: deploy-all
 init-swarm:
 	@docker --context $(DOCKER_CONTEXT) swarm init || echo "Swarm already initialized or not needed."
 
+.PHONY: build-image
+build-image:
+	@@export $(shell grep -v '^#' .env | xargs) && \
+	envsubst < $(COMPOSE_FILE) | docker compose build --push
+	@rm -f /tmp/rendered-compose.yml	
+
 .PHONY: deploy-service
-deploy-service:
+deploy-service: build-image
 	@export $(shell grep -v '^#' .env | xargs) && \
 	envsubst < $(COMPOSE_FILE) | docker --context $(DOCKER_CONTEXT) stack deploy -c - $(STACK_NAME)
 	@rm -f /tmp/rendered-compose.yml
