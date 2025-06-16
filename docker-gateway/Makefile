@@ -1,6 +1,6 @@
 # Variables
 STACK_NAME := gateway
-COMPOSE_FILE := docker-compose.yml
+COMPOSE_FILE := docker-compose.yaml
 DOCKER_CONTEXT ?= default  # Default context if not specified
 
 # Default target
