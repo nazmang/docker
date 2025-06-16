@@ -1,0 +1,102 @@
+def deployExecuted = false // Flag indicates when stack deploy is successful
+
+pipeline {
+    agent { label 'cloud && hetzner'  }
+
+    environment {
+        CLOUDFLARED_TAG = '2025.4.0'
+        DOCKER_COMPOSE_DIR = 'docker-gateway'
+        DOCKER_STACK_NAME = 'gateway'
+        ETCD_DATA_PATH = '/data/etcd_data'        
+        LETSENCRYPT_HOST = 'example.com'
+        TUNNEL_TOKEN = credentials('CLOUDFLARE_TUNNEL_TOKEN')
+        // Telegram configre
+        TELEGRAM_BOT_TOKEN = credentials('telegramToken')
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')   
+        VIRTUAL_HOST = 'example.com'
+        VIRTUAL_PORT = 8080
+        LETSENCRYPT_EMAIL = 'admin@example.com'       
+    }
+   
+    stages {        
+        stage('Create Files') {
+            when {
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+            }
+            steps {
+                script {
+                    def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
+                    writeFile file: "${composeDir}/secret-file", text: env.JENKINS_SECRET
+
+                    def safeTunnelToken = env.TUNNEL_TOKEN.replaceAll('\n', '\\\\n').replaceAll(':', '\\:')
+                    def envContent = """
+                    CLOUDFLARED_TAG=${env.CLOUDFLARED_TAG}
+                    LETSENCRYPT_EMAIL="${env.LETSENCRYPT_EMAIL}"
+                    LETSENCRYPT_HOST="${env.LETSENCRYPT_HOST}"
+                    TUNNEL_TOKEN="${safeTunnelToken}"
+                    VIRTUAL_HOST="${env.VIRTUAL_HOST}"
+                    VIRTUAL_PORT=${env.VIRTUAL_PORT}
+                    """
+                    echo "Generated .env content:\n${envContent}"
+                    writeFile file: "${composeDir}/.env", text: envContent
+                }
+            }
+        }
+
+        stage('Deploy stack') {
+            when {
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+            }
+            steps {
+                script {
+                    dir("${env.DOCKER_COMPOSE_DIR}") {
+                        sh "make -f Makefile -e deploy-all STACK_NAME=${env.DOCKER_STACK_NAME}"
+                        env.DEPLOY_EXECUTED = 'true'
+                    }
+                    deployExecuted = true
+                    echo "Deploy executed: ${deployExecuted}"
+                }                
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            script{                            
+                if (deployExecuted) {
+                    def message = "✅ <b>Jenkins Deploy Success</b>\n" +
+                                  "Job: ${env.JOB_NAME}\n" +
+                                  "Build: #${env.BUILD_NUMBER}\n" +
+                                  "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                                  "URL: ${env.BUILD_URL}"
+                    sh """
+                        curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
+                        -d chat_id=${env.TELEGRAM_CHAT_ID} \
+                        -d text="${message}" \
+                        -d parse_mode=HTML
+                    """
+                } else {
+                    echo "Deploy stack was not executed, skipping Telegram notification."
+                }
+            }
+        }
+        failure {
+            script {
+                def message = "<b>❌ Jenkins Deploy Failed</b>\n" +
+                          "Job: ${env.JOB_NAME}\n" +
+                          "Build: #${env.BUILD_NUMBER}\n" +
+                          "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                          "URL: <a href='${env.BUILD_URL}'>Link</a>"
+                sh """
+                    curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
+                    -d chat_id=${env.TELEGRAM_CHAT_ID} \
+                    -d text="${message}" \
+                    -d parse_mode=HTML
+                """
+            }
+        }
+    }
+}

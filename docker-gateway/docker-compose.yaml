@@ -1,15 +1,21 @@
 version: "3.8"
 
 services:
+  gateway:
+    build:
+      context: ./gateway
+    image: nazmang/nginx-gateway:1.0.0
+    networks:
+      - gw_net
   cloudflared:
     image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-latest}
     command: tunnel run
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}
     networks:
-      - jenkins_net
+      - gw_net
 
 networks:
-  jenkins_net:
-    name: jenkins_jenkins_net
-    external: true
+  gw_net:
+    attachable: true
+    driver: overlay
