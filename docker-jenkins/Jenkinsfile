@@ -3,23 +3,17 @@ def deployExecuted = false // Flag indicates when stack deploy is successful
 pipeline {
     agent { label 'cloud && hetzner'  }
 
-    environment {
-        CLOUDFLARED_TAG = '2025.4.0'
+    environment {    
         DOCKER_COMPOSE_DIR = 'docker-jenkins'
         DOCKER_STACK_NAME = 'jenkins'
         ETCD_DATA_PATH = '/data/etcd_data'
         JENKINS_AGENT_TAG = 'latest-jdk21'
         JENKINS_HOME_PATH = '/data/jenkins_home/jenkins_local'
         JENKINS_SECRET = credentials('JENKINS_AGENT_SECRET')
-        JENKINS_TAG = 'latest-jdk21'
-        LETSENCRYPT_HOST = 'example.com'
-        TUNNEL_TOKEN = credentials('CLOUDFLARE_TUNNEL_TOKEN')
+        JENKINS_TAG = 'latest-jdk21'        
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
-        TELEGRAM_CHAT_ID = credentials('telegramChatid')   
-        VIRTUAL_HOST = 'example.com'
-        VIRTUAL_PORT = 8080
-        LETSENCRYPT_EMAIL = 'admin@example.com'       
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')             
     }
    
     stages {        
@@ -33,17 +27,11 @@ pipeline {
                     writeFile file: "${composeDir}/secret-file", text: env.JENKINS_SECRET
 
                     def safeTunnelToken = env.TUNNEL_TOKEN.replaceAll('\n', '\\\\n').replaceAll(':', '\\:')
-                    def envContent = """
-                    CLOUDFLARED_TAG=${env.CLOUDFLARED_TAG}
+                    def envContent = """                    
                     ETCD_DATA_PATH=${env.ETCD_DATA_PATH}
                     JENKINS_HOME_PATH=${env.JENKINS_HOME_PATH}
                     JENKINS_AGENT_TAG=${env.JENKINS_AGENT_TAG}
-                    JENKINS_TAG=${env.JENKINS_TAG}
-                    LETSENCRYPT_EMAIL="${env.LETSENCRYPT_EMAIL}"
-                    LETSENCRYPT_HOST="${env.LETSENCRYPT_HOST}"
-                    TUNNEL_TOKEN="${safeTunnelToken}"
-                    VIRTUAL_HOST="${env.VIRTUAL_HOST}"
-                    VIRTUAL_PORT=${env.VIRTUAL_PORT}
+                    JENKINS_TAG=${env.JENKINS_TAG}                    
                     """
                     echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent

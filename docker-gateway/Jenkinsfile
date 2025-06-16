@@ -67,7 +67,7 @@ pipeline {
         success {
             script{                            
                 if (deployExecuted) {
-                    def message = "✅ <b>Jenkins Deploy Success</b>\n" +
+                    def message = "✅ <b>Gateway Deploy Success</b>\n" +
                                   "Job: ${env.JOB_NAME}\n" +
                                   "Build: #${env.BUILD_NUMBER}\n" +
                                   "Stack: ${env.DOCKER_STACK_NAME}\n" +
@@ -85,7 +85,7 @@ pipeline {
         }
         failure {
             script {
-                def message = "<b>❌ Jenkins Deploy Failed</b>\n" +
+                def message = "<b>❌ Gateway Deploy Failed</b>\n" +
                           "Job: ${env.JOB_NAME}\n" +
                           "Build: #${env.BUILD_NUMBER}\n" +
                           "Stack: ${env.DOCKER_STACK_NAME}\n" +
