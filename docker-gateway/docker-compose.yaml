@@ -4,7 +4,7 @@ services:
   gateway:
     build:
       context: ./gateway
-    image: nazmang/nginx-gateway:1.0.0
+    image: nazman/nginx-gateway:${GATEWAY_TAG:-1.0.0}
     networks:
       - gw_net
   cloudflared:
