@@ -2,7 +2,9 @@ def deployExecuted = false // Flag indicates when stack deploy is successful
 
 pipeline {
     agent { label 'cloud && hetzner'  }
-
+    parameters {
+        booleanParam(name: 'FORCE_DEPLOY', defaultValue: false, description: 'Force deployment ignoring changeset')
+    }
     environment {    
         DOCKER_COMPOSE_DIR = 'docker-jenkins'
         DOCKER_STACK_NAME = 'jenkins'
@@ -19,7 +21,10 @@ pipeline {
     stages {        
         stage('Create Files') {
             when {
-                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { return params.FORCE_DEPLOY }
+                }
             }
             steps {
                 script {
@@ -41,7 +46,10 @@ pipeline {
 
         stage('Deploy stack') {
             when {
-                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { return params.FORCE_DEPLOY }
+                }
             }
             steps {
                 script {
