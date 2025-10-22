@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.19.0
+    deploy:
+      placement:
+        constraints:
+          - "node.role==worker"
+          - "node.labels.platform==vmware"
+    env_file:
+      - .env
+    environment:
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_SECURITY_PLUGIN=false"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
+        hard: 65536
+    ports:
+      - 9200:9200
+      - 9600:9600
+    networks:
+      - opensearch-net
+    configs:
+      - source: opensearch_config
+        target: /usr/share/opensearch/config/opensearch.yml
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+      - opensearch-conf:/usr/share/opensearch/config
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.0
+    deploy:
+      placement:
+        constraints:
+          - "node.labels.platform==vmware"
+    ports:
+      - 5601:5601
+    env_file:
+      - .env
+    environment:
+      - OPENSEARCH_HOSTS=https://opensearch:9200
+      - OPENSEARCH_SSL_VERIFICATIONMODE=none
+      - SERVER_SSL_ENABLED=false
+    depends_on:
+      - opensearch
+    networks:
+      - opensearch-net
+
+volumes:
+  opensearch-data:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "/data/opensearch_data"
+  opensearch-conf:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "/data/opensearch_config"
+
+configs:
+  opensearch_config:
+    # file: /data/opensearch_config/opensearch.yml
+    file: ./opensearch.yml
+    name: opensearch_config_v${CONF_VERSION}
+
+networks:
+  opensearch-net:

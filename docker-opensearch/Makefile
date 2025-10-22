@@ -1,0 +1,73 @@
+# Variables
+STACK_NAME := opensearch
+COMPOSE_FILE := docker-compose.yml
+DOCKER_CONTEXT ?= default  # Default context if not specified
+CONF_VERSION ?= 1
+
+# Default target
+.PHONY: all
+all: deploy-all
+
+# Initialize Docker Swarm (if not already done)
+.PHONY: init-swarm
+init-swarm:
+	@docker --context $(DOCKER_CONTEXT) swarm init || echo "Swarm already initialized or not needed."
+
+.PHONY: clean-configs
+clean-configs:
+	@echo "Cleaning up old configs (keeping version suffix opensearch_config_v$(CONF_VERSION))..."
+	@for config in $$(docker config ls --format '{{.Name}}' | grep -e 'opensearch_config.*_v'); do \
+		if echo "$$config" | grep -q "_v$(CONF_VERSION)$$"; then \
+			echo "Keeping current config: $$config"; \
+		else \
+			echo "Removing outdated config: $$config"; \
+			docker config rm "$$config" || true; \
+		fi; \
+	done	
+
+.PHONY: deploy-service
+deploy-service:
+ifndef SERVICE
+	$(error SERVICE is not defined. Usage: make deploy-service SERVICE=servicename)
+endif
+	@export $(shell grep -v '^#' .env | xargs) CONF_VERSION=$(CONF_VERSION) && \
+	envsubst < $(COMPOSE_FILE) | docker --context $(DOCKER_CONTEXT) stack deploy -c - $(STACK_NAME)
+	@rm -f /tmp/rendered-compose.yml
+	@echo "${STACK_NAME} $(SERVICE) service deployed to context '$(DOCKER_CONTEXT)'."
+
+
+.PHONY: deploy-opensearch
+deploy-opensearch:
+	@$(MAKE) deploy-service SERVICE=opensearch
+
+# Deploy full stack
+.PHONY: deploy-all
+deploy-all: init-swarm
+	@$(MAKE) deploy-opensearch	
+	@echo "${STACK_NAME} stack deployed to context '$(DOCKER_CONTEXT)'."
+
+# Check the status of the services
+.PHONY: status
+status:
+	@docker --context $(DOCKER_CONTEXT) stack services $(STACK_NAME)
+
+# Remove the stack
+.PHONY: remove
+remove:
+	@echo "Removing stack '$(STACK_NAME)'..."
+	@docker --context $(DOCKER_CONTEXT) stack rm $(STACK_NAME)	
+	@echo "Removing volumes for stack '$(STACK_NAME)'..."
+	@bash -c 'docker --context $(DOCKER_CONTEXT) volume rm $(docker --context $(DOCKER_CONTEXT) volume ls -q --filter label=com.docker.stack.namespace=$(STACK_NAME)) || echo "No volumes to remove."'
+	@$(MAKE) clean-configs 
+	@echo "${STACK_NAME} stack removed from context '$(DOCKER_CONTEXT)'."
+
+# Clean up any unused Docker resources
+.PHONY: cleanup
+cleanup:
+	@docker --context $(DOCKER_CONTEXT) system prune -f
+	@$(MAKE) clean-configs 
+
+# View logs of the opensearch service
+.PHONY: logs
+logs:
+	@docker --context $(DOCKER_CONTEXT) service logs $(STACK_NAME)_opensearch -f

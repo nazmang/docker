@@ -1,0 +1,8 @@
+plugins.security.restapi.roles_enabled:
+  ["all_access", "security_rest_api_access"]
+plugins.security.ssl.transport.enabled_protocols:
+  - "TLSv1.2"
+plugins.security.ssl.http.enabled_protocols:
+  - "TLSv1.2"
+plugins.security.authcz.admin_dn:
+  - "C=DE,L=Test,O=Test,OU=SSL,CN=admin"
