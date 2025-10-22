@@ -2,40 +2,40 @@ def deployExecuted = false // Flag indicates when stack deploy is successful
 
 pipeline {
     agent { label 'cloud && hetzner'  }
-    parameters {
-        booleanParam(name: 'FORCE_DEPLOY', defaultValue: false, description: 'Force deployment ignoring changeset')
-    }
-    environment {    
-        DOCKER_COMPOSE_DIR = 'docker-jenkins'
-        DOCKER_STACK_NAME = 'jenkins'
-        ETCD_DATA_PATH = '/data/etcd_data'
-        JENKINS_AGENT_TAG = 'latest-jdk21'
-        JENKINS_HOME_PATH = '/data/jenkins_home/jenkins_local'
-        JENKINS_SECRET = credentials('JENKINS_AGENT_SECRET')
-        JENKINS_TAG = 'latest-jdk21'        
+
+    environment {
+        CLOUDFLARED_TAG = '2025.4.0'
+        DOCKER_COMPOSE_DIR = 'docker-gateway'
+        DOCKER_STACK_NAME = 'gateway'
+        ETCD_DATA_PATH = '/data/etcd_data'        
+        LETSENCRYPT_HOST = 'example.com'
+        TUNNEL_TOKEN = credentials('CLOUDFLARE_TUNNEL_TOKEN')
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
-        TELEGRAM_CHAT_ID = credentials('telegramChatid')             
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')   
+        VIRTUAL_HOST = 'example.com'
+        VIRTUAL_PORT = 8080
+        LETSENCRYPT_EMAIL = 'admin@example.com'       
     }
    
     stages {        
         stage('Create Files') {
             when {
-                anyOf {
-                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
-                    expression { return params.FORCE_DEPLOY }
-                }
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
             }
             steps {
                 script {
                     def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
                     writeFile file: "${composeDir}/secret-file", text: env.JENKINS_SECRET
 
-                    def envContent = """                    
-                    ETCD_DATA_PATH=${env.ETCD_DATA_PATH}
-                    JENKINS_HOME_PATH=${env.JENKINS_HOME_PATH}
-                    JENKINS_AGENT_TAG=${env.JENKINS_AGENT_TAG}
-                    JENKINS_TAG=${env.JENKINS_TAG}                    
+                    def safeTunnelToken = env.TUNNEL_TOKEN.replaceAll('\n', '\\\\n').replaceAll(':', '\\:')
+                    def envContent = """
+                    CLOUDFLARED_TAG=${env.CLOUDFLARED_TAG}
+                    LETSENCRYPT_EMAIL="${env.LETSENCRYPT_EMAIL}"
+                    LETSENCRYPT_HOST="${env.LETSENCRYPT_HOST}"
+                    TUNNEL_TOKEN="${safeTunnelToken}"
+                    VIRTUAL_HOST="${env.VIRTUAL_HOST}"
+                    VIRTUAL_PORT=${env.VIRTUAL_PORT}
                     """
                     echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent
@@ -45,10 +45,7 @@ pipeline {
 
         stage('Deploy stack') {
             when {
-                anyOf {
-                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
-                    expression { return params.FORCE_DEPLOY }
-                }
+                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
             }
             steps {
                 script {
@@ -70,7 +67,7 @@ pipeline {
         success {
             script{                            
                 if (deployExecuted) {
-                    def message = "✅ <b>Jenkins Deploy Success</b>\n" +
+                    def message = "✅ <b>Gateway Deploy Success</b>\n" +
                                   "Job: ${env.JOB_NAME}\n" +
                                   "Build: #${env.BUILD_NUMBER}\n" +
                                   "Stack: ${env.DOCKER_STACK_NAME}\n" +
@@ -88,7 +85,7 @@ pipeline {
         }
         failure {
             script {
-                def message = "<b>❌ Jenkins Deploy Failed</b>\n" +
+                def message = "<b>❌ Gateway Deploy Failed</b>\n" +
                           "Job: ${env.JOB_NAME}\n" +
                           "Build: #${env.BUILD_NUMBER}\n" +
                           "Stack: ${env.DOCKER_STACK_NAME}\n" +

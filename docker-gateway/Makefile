@@ -1,6 +1,6 @@
 # Variables
-STACK_NAME := jenkins
-COMPOSE_FILE := docker-compose.yml
+STACK_NAME := gateway
+COMPOSE_FILE := docker-compose.yaml
 DOCKER_CONTEXT ?= default  # Default context if not specified
 
 # Default target
@@ -12,27 +12,23 @@ all: deploy-all
 init-swarm:
 	@docker --context $(DOCKER_CONTEXT) swarm init || echo "Swarm already initialized or not needed."
 
+.PHONY: build-image
+build-image:
+	@@export $(shell grep -v '^#' .env | xargs) && \
+	envsubst < $(COMPOSE_FILE) | docker compose build --push
+	@rm -f /tmp/rendered-compose.yml	
+
 .PHONY: deploy-service
-deploy-service:
+deploy-service: build-image
 	@export $(shell grep -v '^#' .env | xargs) && \
 	envsubst < $(COMPOSE_FILE) | docker --context $(DOCKER_CONTEXT) stack deploy -c - $(STACK_NAME)
 	@rm -f /tmp/rendered-compose.yml
 	@echo "${STACK_NAME} $(SERVICE) service deployed to context '$(DOCKER_CONTEXT)'."
 
-
-.PHONY: deploy-jenkins
-deploy-jenkins:
-	@$(MAKE) deploy-service SERVICE=jenkins
-
-.PHONY: deploy-etcd
-deploy-etcd: 
-	@$(MAKE) deploy-service COMPOSE_FILE=etcd-compose.yml SERVICE=etcd
-
-# Deploy full Jenkins stack
+# Deploy full stack
 .PHONY: deploy-all
 deploy-all: init-swarm
-	@$(MAKE) deploy-jenkins 
-	@$(MAKE) deploy-etcd COMPOSE_FILE=etcd-compose.yml	
+	@$(MAKE) deploy-service 	
 	@echo "${STACK_NAME} stack deployed to context '$(DOCKER_CONTEXT)'."
 
 # Check the status of the services
@@ -57,4 +53,4 @@ cleanup:
 # View logs of the Jenkins service
 .PHONY: logs
 logs:
-	@docker --context $(DOCKER_CONTEXT) service logs $(STACK_NAME)_jenkins -f
+	@docker --context $(DOCKER_CONTEXT) service logs $(STACK_NAME)_gateway -f	
