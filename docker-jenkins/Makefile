@@ -28,16 +28,11 @@ deploy-jenkins:
 deploy-etcd: 
 	@$(MAKE) deploy-service COMPOSE_FILE=etcd-compose.yml SERVICE=etcd
 
-.PHONY: deploy-cloudflare
-deploy-cloudflare:
-	@$(MAKE) deploy-service COMPOSE_FILE=cloudflared-compose.yml SERVICE=cloudflared
-
 # Deploy full Jenkins stack
 .PHONY: deploy-all
 deploy-all: init-swarm
 	@$(MAKE) deploy-jenkins 
-	@$(MAKE) deploy-etcd COMPOSE_FILE=etcd-compose.yml
-	@$(MAKE) deploy-cloudflare COMPOSE_FILE=cloudflared-compose.yml
+	@$(MAKE) deploy-etcd COMPOSE_FILE=etcd-compose.yml	
 	@echo "${STACK_NAME} stack deployed to context '$(DOCKER_CONTEXT)'."
 
 # Check the status of the services
