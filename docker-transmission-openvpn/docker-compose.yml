@@ -1,7 +1,7 @@
 version: '3.3'
 services:
  transmission:
-  image: haugene/transmission-openvpn:5.2
+  image: haugene/transmission-openvpn:5.3.1
   ports:
     - "9091:9091"
     - "1888:1888"
