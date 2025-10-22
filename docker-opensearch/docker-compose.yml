@@ -11,22 +11,6 @@ services:
     env_file:
       - .env
     environment:
-      - discovery.type=single-node
-      - cluster.name=opensearch-cluster
-      - node.name=opensearch-node
-      - bootstrap.memory_lock=true
-      - plugins.security.restapi.roles_enabled=["all_access","security_rest_api_access"]
-      - plugins.security.allow_default_init_securityindex=true
-      - plugins.security.authcz.admin_dn=CN=admin,OU=SSL,O=Test,L=Test,C=DE
-      - plugins.security.ssl.transport.pemcert_filepath=/usr/share/opensearch/config/certs/node.pem
-      - plugins.security.ssl.transport.pemkey_filepath=/usr/share/opensearch/config/certs/node.key
-      - plugins.security.ssl.transport.pemtrustedcas_filepath=/usr/share/opensearch/config/certs/ca.pem
-      - plugins.security.ssl.transport.enforce_hostname_verification=false
-      - plugins.security.ssl.transport.enabled=true
-      - plugins.security.ssl.http.enabled=true
-      - plugins.security.ssl.http.pemcert_filepath=/usr/share/opensearch/config/certs/node.pem
-      - plugins.security.ssl.http.pemkey_filepath=/usr/share/opensearch/config/certs/node.key
-      - plugins.security.ssl.http.pemtrustedcas_filepath=/usr/share/opensearch/config/certs/ca.pem
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - "DISABLE_SECURITY_PLUGIN=false"
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
@@ -48,7 +32,7 @@ services:
         target: /usr/share/opensearch/config/opensearch.yml
     volumes:
       - opensearch-data:/usr/share/opensearch/data
-      - opensearch-certs:/usr/share/opensearch/config/certs
+      - opensearch-conf:/usr/share/opensearch/config
 
   dashboards:
     image: opensearchproject/opensearch-dashboards:2.19.0
@@ -76,15 +60,18 @@ volumes:
       type: "none"
       o: "bind"
       device: "/data/opensearch_data"
-  opensearch-certs:
+  opensearch-conf:
     driver: local
     driver_opts:
       type: "none"
       o: "bind"
-      device: "/data/opensearch_config/certs"
+      device: "/data/opensearch_config"
 
 configs:
   opensearch_config:
+    # file: /data/opensearch_config/opensearch.yml
+    file: ./opensearch.yml
+    name: opensearch_config_v${CONF_VERSION}
 
 networks:
   opensearch-net:

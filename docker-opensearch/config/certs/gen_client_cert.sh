@@ -2,7 +2,7 @@
 
 openssl genrsa -out client.key 2048
 openssl req -new -key client.key -out client.csr \
-    -subj "/CN=admin/OU=SSL/O=Test/L=Test/C=DE"
+    -subj "/CN=client/OU=client/O=client/L=test/C=de"
 
 openssl x509 -req \
     -in client.csr \
@@ -11,3 +11,5 @@ openssl x509 -req \
     -CAcreateserial \
     -out client.crt \
     -days 365
+
+openssl x509 -noout -in client.crt -subject
