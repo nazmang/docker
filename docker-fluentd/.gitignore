@@ -1,4 +1,4 @@
-client.*
+*.env
 *.key
 *.crt
 *.pem
