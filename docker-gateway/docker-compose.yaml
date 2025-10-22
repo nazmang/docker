@@ -5,11 +5,13 @@ services:
     build:
       context: ./gateway
     image: nazman/nginx-gateway:${GATEWAY_TAG:-1.0.0}
+    ports:
+      - 80:80
     networks:
       - gw_net
   cloudflared:
     image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-latest}
-    command: tunnel run
+    command: tunnel run --protocol http2
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}
     networks:
