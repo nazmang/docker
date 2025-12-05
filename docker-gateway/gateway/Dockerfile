@@ -1,5 +1,7 @@
 # nginx/Dockerfile
 FROM nginx:alpine
 
-# Копируем свой конфиг внутрь контейнера, перезаписывая дефолтный
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN rm -f /etc/nginx/conf.d/default.conf
+
+COPY jenkins.conf /etc/nginx/conf.d/jenkins.conf
+COPY zabbix.conf /etc/nginx/conf.d/zabbix.conf
