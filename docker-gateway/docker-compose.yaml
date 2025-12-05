@@ -2,13 +2,27 @@ version: "3.8"
 
 services:
   gateway:
-    build:
-      context: ./gateway
-    image: nazman/nginx-gateway:${GATEWAY_TAG:-1.0.0}
+    image: "jc21/nginx-proxy-manager:${NGINX_PXY_MANAGER_TAG:-latest}"
+    restart: always
     ports:
-      - 80:80
+      - "80:80"
+      - "81:81"
+      - "443:443"
+    volumes:
+      - data:/data
+      - letsencrypt:/etc/letsencrypt
     networks:
       - gw_net
+    deploy:
+      restart_policy:
+        condition: on-failure
+      placement:
+        max_replicas_per_node: 1
+        constraints:
+          - node.platform.arch==x86_64
+          - node.role == manager
+          - node.labels.location == cloud
+
   cloudflared:
     image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-latest}
     command: tunnel run --protocol http2
@@ -21,3 +35,17 @@ networks:
   gw_net:
     attachable: true
     driver: overlay
+
+volumes:
+  data:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "${NGINXP_DATA_PATH}"
+  letsencrypt:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "${NGINXP_LETSENCRYPT_PATH}"
