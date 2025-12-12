@@ -1,7 +1,7 @@
 # Variables
 STACK_NAME := gateway
 COMPOSE_FILE := docker-compose.yaml
-DOCKER_CONTEXT ?= default  # Default context if not specified
+DOCKER_CONTEXT ?= pve  # Default context if not specified
 
 # Default target
 .PHONY: all
