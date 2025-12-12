@@ -3,6 +3,10 @@ def deployExecuted = false // Flag indicates when stack deploy is successful
 pipeline {
     agent {label 'cloud && hetzner'}
     
+    parameters {
+        booleanParam(name: 'FORCE_REDEPLOY', defaultValue: false, description: 'Force redeployment of stack even if no changes detected')
+    }
+    
     environment {
         DOCKER_STACK_NAME = 'zabbix' 
         DOCKER_COMPOSE_DIR = 'docker-zabbix' // Path to stack files
@@ -15,7 +19,10 @@ pipeline {
     stages {
         stage('Create Files') {
             when {
-                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { params.FORCE_REDEPLOY }
+                }
             }
             steps {
                 script {
@@ -45,7 +52,10 @@ pipeline {
         }
         stage('Deploy stack'){    
             when {
-                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { params.FORCE_REDEPLOY }
+                }
             }        
             steps {                
                 script {
