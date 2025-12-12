@@ -24,7 +24,7 @@ services:
         constraints:
           - node.platform.arch==x86_64
           - node.role == manager
-          - node.labels.location == cloud
+          # - node.labels.location == cloud
 
   cloudflared:
     image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-latest}
