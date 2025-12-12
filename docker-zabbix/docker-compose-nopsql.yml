@@ -25,7 +25,6 @@ services:
         constraints:
           - node.platform.arch==x86_64
           - node.role == worker
-          - node.labels.location == cloud
       resources:
         limits:
           cpus: "2.5"
@@ -90,7 +89,6 @@ services:
       placement:
         constraints:
           - node.platform.arch==x86_64
-          - node.labels.location == cloud
       resources:
         limits:
           cpus: "0.2"
@@ -125,8 +123,7 @@ services:
         max_replicas_per_node: 1
         constraints:
           - node.platform.arch==x86_64
-          - node.role == manager
-          - node.labels.location == cloud
+          - node.role == manager         
       replicas: 1
       resources:
         limits:
