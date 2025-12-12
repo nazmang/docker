@@ -77,7 +77,7 @@ services:
         protocol: tcp
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /etc/zabbix:/etc/zabbix/zabbix_agentd.d:ro
+      # - /etc/zabbix:/etc/zabbix/zabbix_agentd.d:ro
     tmpfs: /tmp
     deploy:
       mode: global
