@@ -26,6 +26,7 @@ services:
       - portainer_data:/data
     networks:
       - agent_network
+      - gw_net
     deploy:
       mode: replicated
       replicas: 1
@@ -36,6 +37,9 @@ networks:
   agent_network:
     driver: overlay
     attachable: true
+  gw_net:
+    external: true
+    name: gateway_gw_net
 
 volumes:
   portainer_data:
