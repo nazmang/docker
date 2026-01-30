@@ -55,6 +55,7 @@ services:
       - 9090:9090
     networks:
       - monitoring_net
+      - gateway_gw_net
     labels:
       org.label-schema.group: "monitoring"
 
@@ -81,6 +82,7 @@ services:
       - 9093:9093
     networks:
       - monitoring_net
+      - gateway_gw_net
     labels:
       org.label-schema.group: "monitoring"
 
@@ -88,6 +90,8 @@ networks:
   monitoring_net:
     driver: overlay
     attachable: true
+  gateway_gw_net:
+    external: true
 
 volumes:
   prometheus_data:
