@@ -1,6 +1,10 @@
 pipeline {
     agent { label 'cloud && hetzner' }
 
+    parameters {
+        booleanParam(name: 'FORCE_REDEPLOY', defaultValue: false, description: 'Force redeployment of stack even if no changes detected')
+    }
+
     environment {
         DOCKER_STACK_NAME = 'portainer'
         DOCKER_COMPOSE_DIR = 'docker-portainer' // Path to docker-compose.yml
@@ -17,6 +21,12 @@ pipeline {
         }
 
         stage('Create Files') {
+            when {
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { params.FORCE_REDEPLOY }
+                }
+            }  
             steps {
                 script {
                     def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
@@ -30,6 +40,12 @@ pipeline {
         }
 
         stage('Deploy stack') {
+            when {
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { params.FORCE_REDEPLOY }
+                }
+            }  
             steps {
                 dir("${env.DOCKER_COMPOSE_DIR}") {
                     sh """
