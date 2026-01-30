@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'swarm && local' }
+    agent { label 'cloud && hetzner' }
 
     environment {
         DOCKER_STACK_NAME = 'portainer'
