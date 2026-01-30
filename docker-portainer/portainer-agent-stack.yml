@@ -39,7 +39,7 @@ networks:
     attachable: true
   gw_net:
     external: true
-    name: gateway_gw_net
+
 
 volumes:
   portainer_data:
