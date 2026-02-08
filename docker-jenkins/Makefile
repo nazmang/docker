@@ -1,7 +1,7 @@
 # Variables
 STACK_NAME := jenkins
 COMPOSE_FILE := docker-compose.yml
-DOCKER_CONTEXT ?= pve  # Default context if not specified
+DOCKER_CONTEXT ?= default  # Default context if not specified
 
 # Default target
 .PHONY: all
