@@ -1,19 +1,19 @@
 groups:
   - name: Zabbix
     rules:
-      # - alert: postgres_zabbix_down
-      #   expr: absent(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~".*postgres-zabbix"})
-      #   for: 60s
-      #   labels:
-      #     sevenity: critical
-      #   annotations:
-      #     summary: "Instance {{$labels.instance}} down"
-      #     description: "Instance= {{$labels.instance}}, Service/Job ={{$labels.job}} is down for more than 60 sec."
-      - alert: zabbix_server_down
-        expr: absent(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~".*zabbix-server"})
+      - alert: ZabbixServerDown
+        expr: up{job="zabbix-server"} == 0
         for: 60s
         labels:
-          sevenity: critical
+          severity: critical
         annotations:
-          summary: "Instance {{$labels.instance}} down"
-          description: "Instance= {{$labels.instance}}, Service/Job ={{$labels.job}} is down for more than 60 sec."
+          summary: "Zabbix server is down"
+          description: "Prometheus cannot scrape zabbix-server for 60s"
+      - alert: ZabbixFrontendDown
+        expr: up{job="zabbix-web"} == 0
+        for: 60s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Zabbix frontend is down"
+          description: "Prometheus cannot scrape zabbix-frontend for 60s"

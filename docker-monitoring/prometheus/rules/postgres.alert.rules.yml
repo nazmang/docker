@@ -1,56 +1,114 @@
 groups:
   - name: PostgreSQL
     rules:
+      # === CONNECTIONS ===
       - alert: PostgreSQLMaxConnectionsReached
         expr: sum(pg_stat_activity_count) by (instance) >= sum(pg_settings_max_connections) by (instance) - sum(pg_settings_superuser_reserved_connections) by (instance)
         for: 1m
         labels:
-          severity: email,page
+          severity: page
         annotations:
           summary: "{{ $labels.instance }} has maxed out Postgres connections."
-          description: "{{ $labels.instance }} is exceeding the currently configured maximum Postgres connection limit (current value: {{ $value }}s). Services may be degraded - please take immediate action (you probably need to increase max_connections in the Docker image and re-deploy."
+          description: "Current connections: {{ $value }}. Services may be degraded. Consider increasing max_connections and redeploying."
 
       - alert: PostgreSQLHighConnections
         expr: sum(pg_stat_activity_count) by (instance) > (sum(pg_settings_max_connections) by (instance) - sum(pg_settings_superuser_reserved_connections) by (instance)) * 0.8
-        for: 10m
-        labels:
-          severity: email
-        annotations:
-          summary: "{{ $labels.instance }} is over 80% of max Postgres connections."
-          description: "{{ $labels.instance }} is exceeding 80% of the currently configured maximum Postgres connection limit (current value: {{ $value }}s). Please check utilization graphs and confirm if this is normal service growth, abuse or an otherwise temporary condition or if new resources need to be provisioned (or the limits increased, which is mostly likely)."
-
-      - alert: PostgreSQLDown
-        expr: pg_up != 1
-        for: 1m
-        labels:
-          severity: email
-        annotations:
-          summary: "PostgreSQL is not processing queries: {{ $labels.instance }}"
-          description: "{{ $labels.instance }} is rejecting query requests from the exporter, and thus probably not allowing DNS requests to work either. User services should not be effected provided at least 1 node is still alive."
-
-      - alert: PostgreSQLSlowQueries
-        expr: avg(rate(pg_stat_activity_max_tx_duration{datname!~"template.*"}[2m])) by (datname) > 2 * 60
-        for: 2m
-        labels:
-          severity: email
-        annotations:
-          summary: "PostgreSQL high number of slow on {{ $labels.cluster }} for database {{ $labels.datname }} "
-          description: "PostgreSQL high number of slow queries {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }} "
-
-      - alert: PostgreSQLQPS
-        expr: avg(irate(pg_stat_database_xact_commit{datname!~"template.*"}[5m]) + irate(pg_stat_database_xact_rollback{datname!~"template.*"}[5m])) by (datname) > 10000
         for: 5m
         labels:
           severity: email
         annotations:
-          summary: "PostgreSQL high number of queries per second {{ $labels.cluster }} for database {{ $labels.datname }}"
-          description: "PostgreSQL high number of queries per second on {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }}"
+          summary: "{{ $labels.instance }} is over 80% of max Postgres connections."
+          description: "Current connections: {{ $value }}. Check utilization to determine if normal growth or if limits need adjustment."
 
-      # - alert: PostgreSQLCacheHitRatio
-      #   expr: avg(rate(pg_stat_database_blks_hit{datname!~"template.*"}[5m]) / (rate(pg_stat_database_blks_hit{datname!~"template.*"}[5m]) + rate(pg_stat_database_blks_read{datname!~"template.*"}[5m]))) by (datname) < 0.98
-      #   for: 5m
-      #   labels:
-      #     severity: email
-      #   annotations:
-      #     summary: "PostgreSQL low cache hit rate on {{ $labels.cluster }} for database {{ $labels.datname }}"
-      #     description: "PostgreSQL low on cache hit rate on {{ $labels.cluster }} for database {{ $labels.datname }} with a value of {{ $value }}"
+      # === POSTGRES STATUS ===
+      - alert: PostgreSQLDown
+        expr: sum(pg_up) by (instance) == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "PostgreSQL is down: {{ $labels.instance }}"
+          description: "No Postgres instance is responding on {{ $labels.instance }}. Immediate action required."
+
+      # === LONG RUNNING TRANSACTIONS ===
+      - alert: PostgreSQLLongRunningTransactions
+        expr: max(pg_stat_activity_max_tx_duration{datname!~"template.*"}) by (datname) > 300
+        for: 2m
+        labels:
+          severity: email
+        annotations:
+          summary: "Long running transactions detected on {{ $labels.cluster }} for database {{ $labels.datname }}"
+          description: "Transaction running longer than 5 minutes (current value: {{ $value }}s). Check queries and locks."
+
+      # === DEADLOCKS ===
+      - alert: PostgreSQLDeadlocks
+        expr: increase(pg_stat_database_deadlocks{datname!~"template.*"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: email
+        annotations:
+          summary: "PostgreSQL deadlocks detected on {{ $labels.cluster }} for database {{ $labels.datname }}"
+          description: "Deadlocks occurred in the last 5 minutes (value: {{ $value }}). Investigate query patterns and locking issues."
+
+      # === REPLICATION LAG ===
+      - alert: PostgreSQLReplicationLag
+        expr: pg_last_xact_replay_timestamp > 30
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "Replication lag on {{ $labels.cluster }} replica {{ $labels.instance }}"
+          description: "Replica is lagging more than 30 seconds. Current lag: {{ $value }}s. Services may read stale data."
+
+      # === AUTOVACUUM / DEAD TUPLES ===
+      - alert: PostgreSQLTableBloat
+        expr: pg_stat_user_tables_n_dead_tup{datname!~"template.*"} > 100000
+        for: 10m
+        labels:
+          severity: email
+        annotations:
+          summary: "High number of dead tuples on {{ $labels.cluster }} for database {{ $labels.datname }}"
+          description: "Table bloat detected. Dead tuples: {{ $value }}. Consider running VACUUM / ANALYZE."
+
+      # === DISK / WAL ===
+      - alert: PostgreSQLWALDiskUsage
+        expr: (pg_wal_total_bytes / pg_wal_size_limit_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "PostgreSQL WAL disk usage high on {{ $labels.instance }}"
+          description: "WAL usage is above 90% ({{ $value }}). Consider adding storage or adjusting checkpoint settings."
+
+      # === QPS / THROUGHPUT SPIKE ===
+      - alert: PostgreSQLQPSSpike
+        expr: (
+                avg(irate(pg_stat_database_xact_commit{datname!~"template.*"}[5m]) 
+                  + irate(pg_stat_database_xact_rollback{datname!~"template.*"}[5m])) by (datname)
+              )
+              > 
+              (
+                avg(irate(pg_stat_database_xact_commit{datname!~"template.*"}[1h]) 
+                  + irate(pg_stat_database_xact_rollback{datname!~"template.*"}[1h])) by (datname)
+              ) * 2
+        for: 5m
+        labels:
+          severity: email
+        annotations:
+          summary: "PostgreSQL query per second spike on {{ $labels.cluster }} for database {{ $labels.datname }}"
+          description: "Current QPS ({{ $value }}) is more than 2x the 1h average. Investigate workload changes."
+
+      # === OPTIONAL: CACHE HIT RATIO ===
+      - alert: PostgreSQLCacheHitRatioLow
+        expr: avg(
+                rate(pg_stat_database_blks_hit{datname!~"template.*"}[5m])
+                / 
+                (rate(pg_stat_database_blks_hit{datname!~"template.*"}[5m])
+                + rate(pg_stat_database_blks_read{datname!~"template.*"}[5m]))
+              ) by (datname) < 0.95
+        for: 15m
+        labels:
+          severity: email
+        annotations:
+          summary: "Low cache hit rate on {{ $labels.cluster }} for database {{ $labels.datname }}"
+          description: "Cache hit ratio below 95% ({{ $value }}). May indicate inadequate shared_buffers or cold cache."
