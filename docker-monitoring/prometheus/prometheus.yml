@@ -1,5 +1,5 @@
 global:
-  scrape_interval: 15s
+  scrape_interval: 10s
   evaluation_interval: 15s
 
   # Attach these labels to any time series or alerts when communicating with
@@ -81,7 +81,9 @@ scrape_configs:
     static_configs:
       - targets: ["prometheus:9090"]
 
-  - job_name: "postgres-park"
+  - job_name: "postgres-zabbix"
+    scrape_interval: 45s
+    scrape_timeout: 40s
     static_configs:
       - targets: ["zabbix_postgres-exporter:9187"]
 

@@ -51,6 +51,7 @@ services:
       - "--web.console.templates=/etc/prometheus/consoles"
       - "--storage.tsdb.retention.time=2d"
       - "--web.enable-lifecycle"
+      - "--web.external-url=https://prom.srvxapp.com"
       - "--enable-feature=memory-snapshot-on-shutdown"
     ports:
       - 9090:9090
