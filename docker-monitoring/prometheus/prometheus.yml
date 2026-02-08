@@ -76,49 +76,14 @@ scrape_configs:
       - source_labels: [__meta_dockerswarm_node_id]
         target_label: node_id
 
-  - job_name: "dockerswarm-cloud"
-    dockerswarm_sd_configs:
-      - host: tcp://10.163.1.5:2375
-        role: tasks
-    relabel_configs:
-      # Only keep containers that should be running.
-      - source_labels: [__meta_dockerswarm_task_desired_state]
-        regex: running
-        action: keep
-      # Filter by service name
-      - source_labels: [__meta_dockerswarm_service_name]
-        regex: ".*_cadvisor|.*_nodeexporter"
-        action: keep
-      # Exclude ingress (you had `action: keep`, which включал их!)
-      - source_labels: [__meta_dockerswarm_network_name]
-        regex: ".*ingress.*"
-        action: keep
-      # Overwrite __address__ based on service name
-      - source_labels:
-          [__meta_dockerswarm_service_name, __meta_dockerswarm_node_address]
-        regex: (.*_nodeexporter);(.*)
-        target_label: __address__
-        replacement: "$2:9100"
-      - source_labels:
-          [__meta_dockerswarm_service_name, __meta_dockerswarm_node_address]
-        regex: (.*_cadvisor);(.*)
-        target_label: __address__
-        replacement: "$2:8081"
-      # Set hostname as instance label
-      - source_labels: [__meta_dockerswarm_node_hostname]
-        target_label: instance
-      # Optional: сохраняем ID ноды для удобства
-      - source_labels: [__meta_dockerswarm_node_id]
-        target_label: node_id
-
   - job_name: "prometheus"
     scrape_interval: 20s
     static_configs:
       - targets: ["prometheus:9090"]
 
-  - job_name: "postgres"
+  - job_name: "postgres-park"
     static_configs:
-      - targets: ["10.163.1.5:9187"]
+      - targets: ["zabbix_postgres-exporter:9187"]
 
 #  - job_name: 'pushgateway'
 #    scrape_interval: 10s
