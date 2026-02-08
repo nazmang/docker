@@ -143,7 +143,11 @@ groups:
       description: "{{ $labels.mountpoint }} on {{ $labels.instance }} is running out of inodes."
 
   - alert: FilesystemReadonly
-    expr: node_filesystem_readonly == 1
+    expr: |
+      node_filesystem_readonly{
+        fstype!~"tmpfs|overlay|aufs|squashfs|ramfs|nsfs",
+        mountpoint!~"/run.*|/sys.*|/proc.*|/var/lib/docker/containers.*|/var/lib/kubelet.*"
+      } == 1
     labels:
       severity: critical
       category: availability
@@ -151,6 +155,7 @@ groups:
     annotations:
       summary: "Filesystem became read-only"
       description: "{{ $labels.mountpoint }} on {{ $labels.instance }} is read-only."
+
 
 ###############################################################################
 # NETWORK
