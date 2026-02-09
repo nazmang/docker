@@ -11,7 +11,7 @@ global:
 rule_files:
   - "rules/alert.rules.yml"
   - "rules/postgres.alert.rules.yml"
-  #  - "rules/jenkins.rules.yml"
+  - "rules/jenkins.rules.yml"
   - "rules/zabbix.rules.yml"
 
 # A scrape configuration containing exactly one endpoint to scrape.
@@ -86,6 +86,13 @@ scrape_configs:
     scrape_timeout: 40s
     static_configs:
       - targets: ["zabbix_postgres-exporter:9187"]
+
+  - job_name: "jenkins"
+    scrape_interval: 30s
+    scrape_timeout: 5s
+    metrics_path: /prometheus
+    static_configs:
+      - targets: ["jenkins:8080"]
 
 #  - job_name: 'pushgateway'
 #    scrape_interval: 10s
