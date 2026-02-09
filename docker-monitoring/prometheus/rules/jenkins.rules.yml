@@ -1,29 +1,233 @@
 groups:
-  - name: jenkins
-    rules:
-      - alert: jenkins_down
-        expr: absent(container_memory_usage_bytes{name=~"jenkins_jenkins[^-]*"})
-        for: 30s
-        labels:
-          severity: critical
-        annotations:
-          summary: "Jenkins is down"
-          description: "Jenkins container is down for more than 30 seconds."
+- name: jenkins
+  rules:
 
-      - alert: jenkins_high_cpu
-        expr: sum(rate(container_cpu_usage_seconds_total{name="jenkins"}[1m])) / count(node_cpu_seconds_total{mode="system"}) * 100 > 10
-        for: 30s
-        labels:
-          severity: warning
-        annotations:
-          summary: "Jenkins high CPU usage"
-          description: "Jenkins CPU usage is {{ humanize $value}}%."
+  # =========================
+  # Availability & Usage
+  # =========================
 
-      - alert: jenkins_high_memory
-        expr: sum(container_memory_usage_bytes{name="jenkins"}) > 1200000000
-        for: 30s
-        labels:
-          severity: warning
-        annotations:
-          summary: "Jenkins high memory usage"
-          description: "Jenkins memory consumption is at {{ humanize $value}}."
+  - alert: JenkinsDown
+    expr: up{job="jenkins"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: Jenkins is down
+      description: Prometheus cannot scrape Jenkins metrics for more than 1 minute.
+
+  - alert: JenkinsMetricsMissing
+    expr: absent(jenkins_queue_size_value{job="jenkins"})
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Jenkins metrics missing
+      description: Jenkins Prometheus metrics endpoint is not exposing metrics.
+
+  - alert: JenkinsContainerRestarting
+    expr: increase(container_restart_count{name=~"jenkins.*"}[5m]) > 0
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: Jenkins container restarting
+      description: Jenkins container restarted {{ $value }} times in 5 minutes.
+
+  - alert: JenkinsHighCPUUsage
+    expr: sum(rate(container_cpu_usage_seconds_total{name=~"jenkins.*"}[5m])) > 1
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: Jenkins high CPU usage
+      description: Jenkins uses more than 1 CPU core.
+
+  - alert: JenkinsExtremeCPUUsage
+    expr: sum(rate(container_cpu_usage_seconds_total{name=~"jenkins.*"}[5m])) > 2
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: Jenkins extreme CPU usage
+      description: Jenkins uses more than 2 CPU cores.
+
+  - alert: JenkinsHighMemoryUsage
+    expr: sum(container_memory_usage_bytes{name=~"jenkins.*"}) > 1500000000
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: Jenkins high memory usage
+      description: Jenkins memory usage above 1.5GB.
+
+  - alert: JenkinsExtremeMemoryUsage
+    expr: sum(container_memory_usage_bytes{name=~"jenkins.*"}) > 2500000000
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: Jenkins extreme memory usage
+      description: Jenkins memory usage above 2.5GB.
+
+  - alert: JenkinsTooManyOpenFiles
+    expr: process_open_fds > 4000
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: Jenkins too many open files
+      description: Jenkins open file descriptors are high.
+
+  - alert: JenkinsDiskAlmostFull
+    expr: (node_filesystem_avail_bytes{mountpoint="/var/lib/docker"} / node_filesystem_size_bytes{mountpoint="/var/lib/docker"}) < 0.1
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Docker disk almost full
+      description: Less than 10% disk space left.
+
+  # =========================
+  # Queue & Executors
+  # =========================
+
+  - alert: JenkinsQueueGrowing
+    expr: jenkins_queue_size_value{job="jenkins"} > 10
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Jenkins build queue is growing
+      description: Jenkins queue size is {{ $value }} for more than 5 minutes.
+
+  - alert: JenkinsQueueStuck
+    expr: jenkins_queue_size_value{job="jenkins"} > 0
+    for: 15m
+    labels:
+      severity: critical
+    annotations:
+      summary: Jenkins queue is stuck
+      description: Jenkins has pending builds in queue for more than 15 minutes.
+
+  - alert: JenkinsExecutorsSaturated
+    expr: |
+      jenkins_executor_count_value{job="jenkins"} > 0
+      and
+      (jenkins_executor_in_use_value{job="jenkins"} / jenkins_executor_count_value{job="jenkins"}) > 0.9
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Jenkins executors almost fully utilized
+      description: Jenkins executor utilization is above 90%.
+
+  - alert: JenkinsNoFreeExecutors
+    expr: jenkins_executor_in_use_value{job="jenkins"} == jenkins_executor_count_value{job="jenkins"}
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      summary: Jenkins has no free executors
+      description: All Jenkins executors are busy.
+
+  # =========================
+  # Build stability
+  # =========================
+
+  - alert: JenkinsBuildFailuresSpike
+    expr: increase(jenkins_runs_failure_total{job="jenkins"}[10m]) > 5
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: Jenkins build failures spike
+      description: More than 5 Jenkins runs failed in the last 10 minutes.
+
+  - alert: JenkinsBuildFailureRateHigh
+    expr: |
+      increase(jenkins_runs_total_total{job="jenkins"}[15m]) > 10
+      and
+      (
+        increase(jenkins_runs_failure_total{job="jenkins"}[15m])
+        /
+        increase(jenkins_runs_total_total{job="jenkins"}[15m])
+      ) > 0.3
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Jenkins build failure rate is high
+      description: More than 30% of Jenkins runs failed in the last 15 minutes.
+
+  # =========================
+  # Build duration
+  # =========================
+
+  - alert: JenkinsBuildsTooSlow
+    expr: |
+      histogram_quantile(
+        0.95,
+        sum by (le)(
+          rate(jenkins_job_total_duration{job="jenkins"}[10m])
+        )
+      ) > 1800000
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: Jenkins runs are slow
+      description: 95th percentile run duration exceeds 30 minutes.
+
+  # =========================
+  # JVM GC pressure
+  # =========================
+
+  - alert: JenkinsHighGCPressure
+    expr: rate(jvm_gc_collection_seconds_sum{job="jenkins"}[5m]) > 0.10
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Jenkins high GC pressure
+      description: JVM spends more than 10% time in garbage collection.
+
+  - alert: JenkinsExtremeGCPressure
+    expr: rate(jvm_gc_collection_seconds_sum{job="jenkins"}[5m]) > 0.25
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Jenkins extreme GC pressure
+      description: JVM spends more than 25% time in garbage collection.
+
+  # =========================
+  # JVM Heap saturation
+  # =========================
+
+  - alert: JenkinsHeapUsageHigh
+    expr: |
+      (
+        jvm_memory_bytes_used{area="heap", job="jenkins"}
+        /
+        jvm_memory_bytes_max{area="heap", job="jenkins"}
+      ) > 0.85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Jenkins heap usage high
+      description: Jenkins heap usage above 85%.
+
+  - alert: JenkinsHeapUsageCritical
+    expr: |
+      (
+        jvm_memory_bytes_used{area="heap", job="jenkins"}
+        /
+        jvm_memory_bytes_max{area="heap", job="jenkins"}
+      ) > 0.95
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Jenkins heap usage critical
+      description: Jenkins heap usage above 95%.
