@@ -14,7 +14,7 @@ services:
         reservations:
           memory: 50M
     ports:
-      - "514:514/udp"
+      - "514:514/tcp"
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/log:/var/log:ro
