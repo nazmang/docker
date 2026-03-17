@@ -5,7 +5,9 @@ def deployExecuted = false
 pipeline {
 
     agent { label 'swarm && local' } // Ensure the agent has Docker and Swarm mode enabled
-    
+    parameters {
+        booleanParam(name: 'FORCE_DEPLOY', defaultValue: false, description: 'Force deployment ignoring changeset')
+    }
     environment {
         // Define environment variables for the stack
         DOCKER_STACK_NAME = 'fluentd'
@@ -19,9 +21,12 @@ pipeline {
     stages {
         stage('Deploy Fluentd Stack') {
              when {
-                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
-             }
-            steps {                
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { return params.FORCE_DEPLOY }
+                }
+            }
+            steps {
                 script {
                     dir("${env.DOCKER_COMPOSE_DIR}"){
                         // Deploy the stack using docker stack deploy
