@@ -26,7 +26,7 @@ pipeline {
                     expression { return params.FORCE_DEPLOY }
                 }
             }
-            steps {                
+            steps {
                 script {
                     dir("${env.DOCKER_COMPOSE_DIR}"){
                         // Deploy the stack using docker stack deploy
