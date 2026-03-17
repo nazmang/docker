@@ -12,7 +12,7 @@ pipeline {
         DOCKER_COMPOSE_DIR = 'docker-opensearch' // Path to docker-compose.yml
         DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your main Docker Compose file
         // Opensearch variables
-        OPENSEARCH_INITIAL_ADMIN_PASSWORD=${params.OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+        OPENSEARCH_INITIAL_ADMIN_PASSWORD="${params.OPENSEARCH_INITIAL_ADMIN_PASSWORD}"
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
         TELEGRAM_CHAT_ID = credentials('telegramChatid')  
