@@ -21,7 +21,10 @@ pipeline {
     stages {
         stage('Create Files') {
              when {
-                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { return params.FORCE_DEPLOY }
+                }
              }
             steps {
                 script {
@@ -36,7 +39,10 @@ pipeline {
         }
         stage('Deploy Opensearch Stack') {
              when {
-                changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { return params.FORCE_DEPLOY }
+                }
              }
             steps {                
                 script {
