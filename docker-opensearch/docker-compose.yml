@@ -7,11 +7,11 @@ services:
       placement:
         constraints:
           - "node.role==worker"
-          - "node.labels.platform==vmware"
+          # - "node.labels.platform==vmware"
     env_file:
       - .env
     environment:
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx1G"
       - "DISABLE_SECURITY_PLUGIN=false"
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
       - "DISABLE_INSTALL_DEMO_CONFIG=true"
@@ -39,7 +39,8 @@ services:
     deploy:
       placement:
         constraints:
-          - "node.labels.platform==vmware"
+          - "node.role==worker"
+          # - "node.labels.platform==vmware"
     ports:
       - 5601:5601
     env_file:
