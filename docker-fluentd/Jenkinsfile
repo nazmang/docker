@@ -8,8 +8,8 @@ pipeline {
     
     environment {
         // Define environment variables for the stack
-        DOCKER_STACK_NAME = 'fluentbit'
-        DOCKER_COMPOSE_DIR = 'docker-fluentbit' // Path to docker-compose.yml
+        DOCKER_STACK_NAME = 'fluentd'
+        DOCKER_COMPOSE_DIR = 'docker-fluentd' // Path to docker-compose.yml
         DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your main Docker Compose file
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
@@ -17,7 +17,7 @@ pipeline {
     }
 
     stages {
-        stage('Deploy Fluentbit Stack') {
+        stage('Deploy Fluentd Stack') {
              when {
                 changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
              }
@@ -37,7 +37,7 @@ pipeline {
         success {
             script {
                 if (deployExecuted) {
-                    def message = "✅ <b>Fluentbit Deploy Success</b>\n" +
+                    def message = "✅ <b>Fluentd Deploy Success</b>\n" +
                                   "Job: ${env.JOB_NAME}\n" +
                                   "Build: #${env.BUILD_NUMBER}\n" +
                                   "Stack: ${env.DOCKER_STACK_NAME}\n" +
@@ -50,7 +50,7 @@ pipeline {
         }
         failure {
             script {
-                def message = "❌ <b>Fluentbit Deploy Failed</b>\n" +
+                def message = "❌ <b>Fluentd Deploy Failed</b>\n" +
                           "Job: ${env.JOB_NAME}\n" +
                           "Build: #${env.BUILD_NUMBER}\n" +
                           "Stack: ${env.DOCKER_STACK_NAME}\n" +
