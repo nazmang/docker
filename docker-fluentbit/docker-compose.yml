@@ -16,10 +16,7 @@ services:
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/log:/var/log:ro
-<<<<<<< HEAD
       - flb_db:/fluent-bit/db
-=======
->>>>>>> master
     configs:
       - source: fluent-bit-config
         target: /fluent-bit/etc/fluent-bit.conf
