@@ -1,6 +1,6 @@
+fluentd/fluent.conf
 *.env
 *.key
 *.crt
 *.pem
 
-fluentd/fluent.conf
