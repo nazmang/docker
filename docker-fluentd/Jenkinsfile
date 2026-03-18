@@ -3,7 +3,6 @@
 def deployExecuted = false
 
 pipeline {
-
     agent { label 'cloud && hetzner' } // Ensure the agent has Docker and Swarm mode enabled
     parameters {
         booleanParam(name: 'FORCE_DEPLOY', defaultValue: false, description: 'Force deployment ignoring changeset')
@@ -15,18 +14,18 @@ pipeline {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your main Docker Compose file
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
-        TELEGRAM_CHAT_ID = credentials('telegramChatid') 
-        OS_PASSWORD="${params.OS_PASSWORD}"
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')
+        OS_PASSWORD = "${params.OS_PASSWORD}"
     }
 
     stages {
         stage('Create Files') {
-             when {
+            when {
                 anyOf {
                     changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
                     expression { return params.FORCE_DEPLOY }
                 }
-             }
+            }
             steps {
                 script {
                     def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
@@ -38,8 +37,27 @@ pipeline {
                 }
             }
         }
+        stage('Docker Login') {
+            when {
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { return params.FORCE_DEPLOY }
+                }
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    """
+                }
+            }
+        }
         stage('Deploy Fluentd Stack') {
-             when {
+            when {
                 anyOf {
                     changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
                     expression { return params.FORCE_DEPLOY }
@@ -47,9 +65,9 @@ pipeline {
             }
             steps {
                 script {
-                    dir("${env.DOCKER_COMPOSE_DIR}"){
+                    dir("${env.DOCKER_COMPOSE_DIR}") {
                         // Deploy the stack using docker stack deploy
-                        sh "make -f Makefile -e deploy-all STACK_NAME=${env.DOCKER_STACK_NAME} CONF_VERSION=${BUILD_NUMBER}"                    
+                        sh "make -f Makefile -e deploy-all STACK_NAME=${env.DOCKER_STACK_NAME} CONF_VERSION=${BUILD_NUMBER}"
                     }
                     deployExecuted = true
                 }
@@ -61,20 +79,20 @@ pipeline {
         success {
             script {
                 if (deployExecuted) {
-                    def message = "✅ <b>Fluentd Deploy Success</b>\n" +
+                    def message = '✅ <b>Fluentd Deploy Success</b>\n' +
                                   "Job: ${env.JOB_NAME}\n" +
                                   "Build: #${env.BUILD_NUMBER}\n" +
                                   "Stack: ${env.DOCKER_STACK_NAME}\n" +
                                   "URL: <a href=\"${env.BUILD_URL}\">Link</a>"
                     telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message, 'HTML')
                 } else {
-                    echo "Deploy stack was not executed, skipping Telegram notification."
+                    echo 'Deploy stack was not executed, skipping Telegram notification.'
                 }
             }
         }
         failure {
             script {
-                def message = "❌ <b>Fluentd Deploy Failed</b>\n" +
+                def message = '❌ <b>Fluentd Deploy Failed</b>\n' +
                           "Job: ${env.JOB_NAME}\n" +
                           "Build: #${env.BUILD_NUMBER}\n" +
                           "Stack: ${env.DOCKER_STACK_NAME}\n" +
