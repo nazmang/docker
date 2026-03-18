@@ -15,10 +15,29 @@ pipeline {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your main Docker Compose file
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
-        TELEGRAM_CHAT_ID = credentials('telegramChatid')  
+        TELEGRAM_CHAT_ID = credentials('telegramChatid') 
+        OS_PASSWORD="${params.OS_PASSWORD}"
     }
 
     stages {
+        stage('Create Files') {
+             when {
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { return params.FORCE_DEPLOY }
+                }
+             }
+            steps {
+                script {
+                    def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
+                    def envContent = """
+                    OS_PASSWORD=${env.OS_PASSWORD}
+                    """
+                    // echo "Generated .env content:\n${envContent}"
+                    writeFile file: "${composeDir}/.env", text: envContent
+                }
+            }
+        }
         stage('Deploy Fluentd Stack') {
              when {
                 anyOf {

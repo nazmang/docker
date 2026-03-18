@@ -5,7 +5,9 @@ def deployExecuted = false
 pipeline {
 
     agent { label 'cloud && hetzner' } // Ensure the agent has Docker and Swarm mode enabled
-    
+    parameters {
+        booleanParam(name: 'FORCE_DEPLOY', defaultValue: false, description: 'Force deployment ignoring changeset')
+    }
     environment {
         // Define environment variables for the stack
         DOCKER_STACK_NAME = 'opensearch'
@@ -30,7 +32,7 @@ pipeline {
                 script {
                     def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
                     def envContent = """
-                    OPENSEARCH_INITIAL_ADMIN_PASSWORD=${env.OPENSEARCH_INITIAL_ADMIN_PASSWORD}                    
+                    OPENSEARCH_INITIAL_ADMIN_PASSWORD=${env.OPENSEARCH_INITIAL_ADMIN_PASSWORD}
                     """
                     // echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent

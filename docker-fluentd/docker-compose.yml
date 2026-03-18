@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   fluentd:
-    # image: fluent/fluentd:v1.16-debian
+    image: ${IMAGE}
     build:
       context: ./fluentd
     ports:
@@ -11,22 +11,23 @@ services:
     volumes:
       - fluentd-buffer:/fluentd/buffer
       - fluentd-config:/fluentd/etc/
-    # configs:
-    #   - source: fluentd-config
-    #     target: /fluentd/etc/fluent.conf
-    # environment:
-    #   - FLUENT_UID=0
-    # deploy:
-    #   mode: replicated
-    #   replicas: 1
-    #   placement:
-    #     constraints:
-    #       - node.role == manager
+    configs:
+      - source: fluentd-config
+        target: /fluentd/etc/fluent.conf
+    environment:
+      - FLUENT_UID=0
+      - OS_PASSWORD=${OS_PASSWORD}
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
 
-# configs:
-# fluentd-config:
-#   file: ./fluentd/fluent.conf
-#   name: fluentd-config_v${CONF_VERSION}
+configs:
+  fluentd-config:
+    file: ./fluentd/fluent.conf
+    name: fluentd-config_v${CONF_VERSION}
 volumes:
   fluentd-buffer:
     driver: local
