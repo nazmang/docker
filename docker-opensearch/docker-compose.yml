@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   opensearch:
-    image: opensearchproject/opensearch:2.19.0
+    image: opensearchproject/opensearch:2.19.5
     deploy:
       placement:
         constraints:
@@ -24,7 +24,7 @@ services:
         hard: 65536
     ports:
       - 9200:9200
-      - 9600:9600
+      - 9300:9300
     networks:
       - opensearch-net
     # configs:
@@ -35,7 +35,7 @@ services:
       - opensearch-conf:/usr/share/opensearch/config
 
   dashboards:
-    image: opensearchproject/opensearch-dashboards:2.19.0
+    image: opensearchproject/opensearch-dashboards:2.19.5
     deploy:
       placement:
         constraints:
