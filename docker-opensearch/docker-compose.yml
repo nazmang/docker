@@ -12,7 +12,7 @@ services:
       - .env
     environment:
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx1G"
-      - "DISABLE_SECURITY_PLUGIN=true"
+      - "DISABLE_SECURITY_PLUGIN=false"
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
       - "DISABLE_INSTALL_DEMO_CONFIG=true"
     ulimits:
