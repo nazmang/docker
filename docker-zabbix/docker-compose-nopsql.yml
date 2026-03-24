@@ -26,8 +26,8 @@ services:
           - node.role == worker
       resources:
         limits:
-          cpus: "2-4"
-          memory: 2-4G
+          cpus: "4"
+          memory: 4G
         reservations:
           cpus: "1.5"
           memory: 1G
