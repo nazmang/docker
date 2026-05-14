@@ -1,6 +1,7 @@
 # Variables
 STACK_NAME := opensearch
 COMPOSE_FILE := docker-compose.yml
+CLUSTER_COMPOSE_FILE := docker-compose-cluster.yml
 DOCKER_CONTEXT ?= default  # Default context if not specified
 CONF_VERSION ?= 1
 
@@ -40,11 +41,30 @@ endif
 deploy-opensearch:
 	@$(MAKE) deploy-service SERVICE=opensearch
 
-# Deploy full stack
+# Deploy full stack (single-node)
 .PHONY: deploy-all
 deploy-all: init-swarm
-	@$(MAKE) deploy-opensearch	
+	@$(MAKE) deploy-opensearch
 	@echo "${STACK_NAME} stack deployed to context '$(DOCKER_CONTEXT)'."
+
+# Deploy cluster stack (2-node)
+.PHONY: deploy-cluster-service
+deploy-cluster-service:
+ifndef SERVICE
+	$(error SERVICE is not defined. Usage: make deploy-cluster-service SERVICE=servicename)
+endif
+	@export $(shell grep -v '^#' .env | xargs) CONF_VERSION=$(CONF_VERSION) && \
+	envsubst < $(CLUSTER_COMPOSE_FILE) | docker --context $(DOCKER_CONTEXT) stack deploy -c - $(STACK_NAME)
+	@echo "${STACK_NAME} $(SERVICE) service deployed to context '$(DOCKER_CONTEXT)'."
+
+.PHONY: deploy-opensearch-cluster
+deploy-opensearch-cluster:
+	@$(MAKE) deploy-cluster-service SERVICE=opensearch-node1
+
+.PHONY: deploy-cluster
+deploy-cluster: init-swarm
+	@$(MAKE) deploy-opensearch-cluster
+	@echo "${STACK_NAME} cluster stack deployed to context '$(DOCKER_CONTEXT)'."
 
 # Check the status of the services
 .PHONY: status
@@ -67,7 +87,20 @@ cleanup:
 	@docker --context $(DOCKER_CONTEXT) system prune -f
 	@$(MAKE) clean-configs 
 
-# View logs of the opensearch service
+# View logs of the opensearch service (single-node)
 .PHONY: logs
 logs:
 	@docker --context $(DOCKER_CONTEXT) service logs $(STACK_NAME)_opensearch -f
+
+# View logs of cluster nodes
+.PHONY: logs-node1
+logs-node1:
+	@docker --context $(DOCKER_CONTEXT) service logs $(STACK_NAME)_opensearch-node1 -f
+
+.PHONY: logs-node2
+logs-node2:
+	@docker --context $(DOCKER_CONTEXT) service logs $(STACK_NAME)_opensearch-node2 -f
+
+.PHONY: logs-dashboards
+logs-dashboards:
+	@docker --context $(DOCKER_CONTEXT) service logs $(STACK_NAME)_dashboards -f

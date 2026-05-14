@@ -7,17 +7,19 @@ pipeline {
     agent { label 'cloud && hetzner' } // Ensure the agent has Docker and Swarm mode enabled
     parameters {
         booleanParam(name: 'FORCE_DEPLOY', defaultValue: false, description: 'Force deployment ignoring changeset')
+        choice(name: 'DEPLOY_MODE', choices: ['single', 'cluster'], description: 'Deploy single-node or 2-node cluster')
     }
     environment {
         // Define environment variables for the stack
         DOCKER_STACK_NAME = 'opensearch'
         DOCKER_COMPOSE_DIR = 'docker-opensearch' // Path to docker-compose.yml
-        DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your main Docker Compose file
+        DOCKER_COMPOSE_FILE = 'docker-compose.yml'
+        DOCKER_CLUSTER_COMPOSE_FILE = 'docker-compose-cluster.yml'
         // Opensearch variables
         OPENSEARCH_INITIAL_ADMIN_PASSWORD="${params.OPENSEARCH_INITIAL_ADMIN_PASSWORD}"
-        // Telegram configre
+        // Telegram configure
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
-        TELEGRAM_CHAT_ID = credentials('telegramChatid')  
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')
     }
 
     stages {
@@ -34,7 +36,6 @@ pipeline {
                     def envContent = """
                     OPENSEARCH_INITIAL_ADMIN_PASSWORD=${env.OPENSEARCH_INITIAL_ADMIN_PASSWORD}
                     """
-                    // echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent
                 }
             }
@@ -46,11 +47,14 @@ pipeline {
                     expression { return params.FORCE_DEPLOY }
                 }
              }
-            steps {                
+            steps {
                 script {
                     dir("${env.DOCKER_COMPOSE_DIR}"){
-                        // Deploy the stack using docker stack deploy
-                        sh "make -f Makefile -e deploy-all STACK_NAME=${env.DOCKER_STACK_NAME}"                    
+                        if (params.DEPLOY_MODE == 'cluster') {
+                            sh "make -f Makefile -e deploy-cluster STACK_NAME=${env.DOCKER_STACK_NAME}"
+                        } else {
+                            sh "make -f Makefile -e deploy-all STACK_NAME=${env.DOCKER_STACK_NAME}"
+                        }
                     }
                     deployExecuted = true
                 }
@@ -66,6 +70,7 @@ pipeline {
                                   "Job: ${env.JOB_NAME}\n" +
                                   "Build: #${env.BUILD_NUMBER}\n" +
                                   "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                                  "Mode: ${params.DEPLOY_MODE}\n" +
                                   "URL: <a href=\"${env.BUILD_URL}\">Link</a>"
                     telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message, 'HTML')
                 } else {
@@ -79,6 +84,7 @@ pipeline {
                           "Job: ${env.JOB_NAME}\n" +
                           "Build: #${env.BUILD_NUMBER}\n" +
                           "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                          "Mode: ${params.DEPLOY_MODE}\n" +
                           "URL: <a href=\"${env.BUILD_URL}\">Link</a>"
                 telegram.sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, message, 'HTML')
             }

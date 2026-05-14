@@ -1,8 +1,7 @@
-discovery.type: single-node
 cluster.name: opensearch-cluster
-node.name: opensearch-node
-bootstrap.memory_lock: true
 network.host: 0.0.0.0
+network.publish_host: _eth0_
+bootstrap.memory_lock: true
 plugins.security.restapi.roles_enabled:
   ["all_access", "security_rest_api_access"]
 plugins.security.allow_default_init_securityindex: true
@@ -15,6 +14,8 @@ plugins.security.ssl.http.enabled: true
 plugins.security.ssl.http.pemcert_filepath: /usr/share/opensearch/config/certs/node.pem
 plugins.security.ssl.http.pemkey_filepath: /usr/share/opensearch/config/certs/node.key
 plugins.security.ssl.http.pemtrustedcas_filepath: /usr/share/opensearch/config/certs/ca.pem
+plugins.security.nodes_dn:
+  - "CN=opensearch-node,OU=IT,O=MyOrg,L=City,ST=State,C=US"
 plugins.security.authcz.admin_dn: ["CN=client,OU=client,O=client,L=test,C=de"]
 plugins.security.allow_unsafe_democertificates: true
 plugins.security.audit.type: internal_opensearch
@@ -54,4 +55,3 @@ plugins.security.system_indices.indices:
     .plugins-flow-framework-templates,
     .plugins-flow-framework-state,
   ]
-node.max_local_storage_nodes: 3
