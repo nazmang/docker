@@ -1,3 +1,9 @@
+# NOTE (2026-09-10): five rules here used to select container_*{name=~"jenkins.*"}
+# and could never fire -- no series in this Prometheus carries a `name` label,
+# because cAdvisor reports no containers at all on Docker 29 (containerd
+# snapshotter vs. the legacy graph driver layout it still expects). They now
+# use the JVM/process metrics Jenkins itself exposes on /prometheus, and the
+# restart rule uses swarm-exporter. Thresholds are unchanged.
 groups:
 - name: jenkins
   rules:
@@ -25,7 +31,7 @@ groups:
       description: Jenkins Prometheus metrics endpoint is not exposing metrics.
 
   - alert: JenkinsContainerRestarting
-    expr: increase(container_restart_count{name=~"jenkins.*"}[5m]) > 0
+    expr: changes(swarm_service_replicas_running{service="jenkins_jenkins"}[30m]) > 2
     for: 30s
     labels:
       severity: warning
@@ -34,7 +40,7 @@ groups:
       description: Jenkins container restarted {{ $value }} times in 5 minutes.
 
   - alert: JenkinsHighCPUUsage
-    expr: sum(rate(container_cpu_usage_seconds_total{name=~"jenkins.*"}[5m])) > 1
+    expr: rate(process_cpu_seconds_total{job="jenkins"}[5m]) > 1
     for: 2m
     labels:
       severity: warning
@@ -43,7 +49,7 @@ groups:
       description: Jenkins uses more than 1 CPU core.
 
   - alert: JenkinsExtremeCPUUsage
-    expr: sum(rate(container_cpu_usage_seconds_total{name=~"jenkins.*"}[5m])) > 2
+    expr: rate(process_cpu_seconds_total{job="jenkins"}[5m]) > 2
     for: 2m
     labels:
       severity: critical
@@ -52,7 +58,7 @@ groups:
       description: Jenkins uses more than 2 CPU cores.
 
   - alert: JenkinsHighMemoryUsage
-    expr: sum(container_memory_usage_bytes{name=~"jenkins.*"}) > 1500000000
+    expr: process_resident_memory_bytes{job="jenkins"} > 1500000000
     for: 2m
     labels:
       severity: warning
@@ -61,7 +67,7 @@ groups:
       description: Jenkins memory usage above 1.5GB.
 
   - alert: JenkinsExtremeMemoryUsage
-    expr: sum(container_memory_usage_bytes{name=~"jenkins.*"}) > 2500000000
+    expr: process_resident_memory_bytes{job="jenkins"} > 2500000000
     for: 2m
     labels:
       severity: critical

@@ -1,3 +1,9 @@
+# NOTE (2026-09-10): severities here were `page` and `email`, which the
+# ntfy-alertmanager bridge does not map -- `page` was not in its label table at
+# all, so PostgreSQLDown and the other three most serious rules arrived at
+# ntfy's default priority, indistinguishable from a warning. Everything now
+# uses the critical/warning taxonomy the rest of this directory and the
+# Kubernetes side already use.
 groups:
   - name: PostgreSQL
     rules:
@@ -6,7 +12,7 @@ groups:
         expr: sum(pg_stat_activity_count) by (instance) >= sum(pg_settings_max_connections) by (instance) - sum(pg_settings_superuser_reserved_connections) by (instance)
         for: 1m
         labels:
-          severity: page
+          severity: critical
         annotations:
           summary: "{{ $labels.instance }} has maxed out Postgres connections."
           description: "Current connections: {{ $value }}. Services may be degraded. Consider increasing max_connections and redeploying."
@@ -15,7 +21,7 @@ groups:
         expr: sum(pg_stat_activity_count) by (instance) > (sum(pg_settings_max_connections) by (instance) - sum(pg_settings_superuser_reserved_connections) by (instance)) * 0.8
         for: 5m
         labels:
-          severity: email
+          severity: warning
         annotations:
           summary: "{{ $labels.instance }} is over 80% of max Postgres connections."
           description: "Current connections: {{ $value }}. Check utilization to determine if normal growth or if limits need adjustment."
@@ -25,7 +31,7 @@ groups:
         expr: sum(pg_up) by (instance) == 0
         for: 2m
         labels:
-          severity: page
+          severity: critical
         annotations:
           summary: "PostgreSQL is down: {{ $labels.instance }}"
           description: "No Postgres instance is responding on {{ $labels.instance }}. Immediate action required."
@@ -35,7 +41,7 @@ groups:
         expr: max(pg_stat_activity_max_tx_duration{datname!~"template.*"}) by (datname) > 300
         for: 2m
         labels:
-          severity: email
+          severity: warning
         annotations:
           summary: "Long running transactions detected on {{ $labels.cluster }} for database {{ $labels.datname }}"
           description: "Transaction running longer than 5 minutes (current value: {{ $value }}s). Check queries and locks."
@@ -45,7 +51,7 @@ groups:
         expr: increase(pg_stat_database_deadlocks{datname!~"template.*"}[5m]) > 0
         for: 5m
         labels:
-          severity: email
+          severity: warning
         annotations:
           summary: "PostgreSQL deadlocks detected on {{ $labels.cluster }} for database {{ $labels.datname }}"
           description: "Deadlocks occurred in the last 5 minutes (value: {{ $value }}). Investigate query patterns and locking issues."
@@ -55,7 +61,7 @@ groups:
         expr: pg_last_xact_replay_timestamp > 30
         for: 1m
         labels:
-          severity: page
+          severity: critical
         annotations:
           summary: "Replication lag on {{ $labels.cluster }} replica {{ $labels.instance }}"
           description: "Replica is lagging more than 30 seconds. Current lag: {{ $value }}s. Services may read stale data."
@@ -65,7 +71,7 @@ groups:
         expr: pg_stat_user_tables_n_dead_tup{datname!~"template.*"} > 100000
         for: 10m
         labels:
-          severity: email
+          severity: warning
         annotations:
           summary: "High number of dead tuples on {{ $labels.cluster }} for database {{ $labels.datname }}"
           description: "Table bloat detected. Dead tuples: {{ $value }}. Consider running VACUUM / ANALYZE."
@@ -75,7 +81,7 @@ groups:
         expr: (pg_wal_total_bytes / pg_wal_size_limit_bytes) > 0.9
         for: 5m
         labels:
-          severity: page
+          severity: critical
         annotations:
           summary: "PostgreSQL WAL disk usage high on {{ $labels.instance }}"
           description: "WAL usage is above 90% ({{ $value }}). Consider adding storage or adjusting checkpoint settings."
@@ -93,7 +99,7 @@ groups:
               ) * 2
         for: 5m
         labels:
-          severity: email
+          severity: warning
         annotations:
           summary: "PostgreSQL query per second spike on {{ $labels.cluster }} for database {{ $labels.datname }}"
           description: "Current QPS ({{ $value }}) is more than 2x the 1h average. Investigate workload changes."
@@ -108,7 +114,7 @@ groups:
               ) by (datname) < 0.95
         for: 15m
         labels:
-          severity: email
+          severity: warning
         annotations:
           summary: "Low cache hit rate on {{ $labels.cluster }} for database {{ $labels.datname }}"
           description: "Cache hit ratio below 95% ({{ $value }}). May indicate inadequate shared_buffers or cold cache."

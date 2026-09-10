@@ -147,7 +147,13 @@ services:
       - POSTGRES_PASSWORD   
     deploy:
       restart_policy:
-        condition: on-failure
+        # `on-failure` was the odd one out in this stack, and it cost 2.5 months
+        # of downtime: on 2026-06-26 the task got SIGTERM, supervisord shut
+        # nginx and php-fpm down cleanly, and the task exited 0. Swarm does not
+        # replace a task that succeeded, so the service sat at 0/1 until
+        # swarm-exporter surfaced it on 2026-09-10. The other two services here
+        # already use `any`.
+        condition: any
       placement:  
         max_replicas_per_node: 1
         constraints:
