@@ -22,6 +22,7 @@ pipeline {
         GRAFANA_TAG="10.3.5"
         PROM_TAG="v2.53.4"
         ALERTMGR_TAG="v0.26.0"
+        NTFY_AM_TAG="1.0.1"
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
         TELEGRAM_CHAT_ID = credentials('telegramChatid')  
@@ -52,6 +53,7 @@ pipeline {
                     GRAFANA_TAG=${env.GRAFANA_TAG}
                     PROM_TAG=${env.PROM_TAG}
                     ALERTMGR_TAG=${env.ALERTMGR_TAG}
+                    NTFY_AM_TAG=${env.NTFY_AM_TAG}
                     """
                     // echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent

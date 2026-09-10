@@ -1,1 +1,3 @@
 alertmanager.y*ml
+# ntfy-alertmanager's config holds the ntfy access token, same reason as above.
+config.scfg

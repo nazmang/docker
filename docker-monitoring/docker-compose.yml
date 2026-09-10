@@ -88,6 +88,33 @@ services:
     labels:
       org.label-schema.group: "monitoring"
 
+  # Translates Alertmanager webhooks into readable ntfy notifications. Without
+  # it, Alertmanager posts its own JSON and ntfy publishes the payload verbatim
+  # as the message text -- verified against the live server, and unreadable on a
+  # phone. The cluster runs the same bridge for the same reason.
+  #
+  # Its config carries the ntfy token, so it lives beside alertmanager.yml under
+  # /data and is gitignored for the same reason.
+  ntfy-alertmanager:
+    image: xenrox/ntfy-alertmanager:${NTFY_AM_TAG:-1.0.1}
+    command:
+      - "-config"
+      - "/etc/ntfy-alertmanager/config.scfg"
+    volumes:
+      - ntfy_alertmanager:/etc/ntfy-alertmanager
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 16M
+    networks:
+      - monitoring_net
+    labels:
+      org.label-schema.group: "monitoring"
+
 networks:
   monitoring_net:
     driver: overlay
@@ -120,3 +147,9 @@ volumes:
       type: "none"
       o: "bind"
       device: "/data/alertmanager"
+  ntfy_alertmanager:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "/data/ntfy-alertmanager"
