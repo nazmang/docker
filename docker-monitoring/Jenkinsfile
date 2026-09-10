@@ -48,6 +48,15 @@ pipeline {
             steps {
                 script {
                     def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
+                    // Asked git rather than env.GIT_COMMIT: on the first run
+                    // that variable was empty and every config object landed as
+                    // *_manual, which defeats the versioning entirely -- the
+                    // name would stop changing and new content would stop
+                    // reaching the service.
+                    def configVersion = sh(
+                        script: 'git rev-parse --short=8 HEAD',
+                        returnStdout: true
+                    ).trim()
                     def envContent = """
                     GF_SECURITY_ADMIN_USER=${env.GF_SECURITY_ADMIN_USER}
                     GF_SECURITY_ADMIN_PASSWORD=${env.GF_SECURITY_ADMIN_PASSWORD}
@@ -58,7 +67,7 @@ pipeline {
                     PROM_TAG=${env.PROM_TAG}
                     ALERTMGR_TAG=${env.ALERTMGR_TAG}
                     NTFY_AM_TAG=${env.NTFY_AM_TAG}
-                    PROM_CONFIG_VERSION=${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : 'manual'}
+                    PROM_CONFIG_VERSION=${configVersion}
                     """
                     // echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent
