@@ -23,6 +23,10 @@ pipeline {
         PROM_TAG="v2.53.4"
         ALERTMGR_TAG="v0.26.0"
         NTFY_AM_TAG="1.0.1"
+        // Prometheus config and rules ship as Swarm configs, and Swarm configs
+        // are immutable -- their names must change for new content to reach the
+        // service. The commit sha does that automatically, so a config change
+        // deploys exactly like a code change and cannot be half-applied.
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
         TELEGRAM_CHAT_ID = credentials('telegramChatid')  
@@ -54,6 +58,7 @@ pipeline {
                     PROM_TAG=${env.PROM_TAG}
                     ALERTMGR_TAG=${env.ALERTMGR_TAG}
                     NTFY_AM_TAG=${env.NTFY_AM_TAG}
+                    PROM_CONFIG_VERSION=${env.GIT_COMMIT ? env.GIT_COMMIT.take(8) : 'manual'}
                     """
                     // echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent

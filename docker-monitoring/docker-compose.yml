@@ -41,8 +41,34 @@ services:
         reservations:
           memory: 1.5G
     volumes:
-      - prometheus_config:/etc/prometheus
       - prometheus_data:/prometheus
+    # Config and rules arrive as Swarm configs, not as a bind mount on NFS.
+    # Before 2026-09-10 these files lived at /data/prometheus_config and were
+    # copied there by hand -- the Jenkins pipeline only ran `docker stack
+    # deploy` and never touched them, so git was a hopeful copy rather than the
+    # source of truth. That is the same shape of gap that silently deleted
+    # OpenSearch's fluentd user, so it is closed here first.
+    #
+    # Changing a file therefore means a service restart, not `/-/reload`: Swarm
+    # configs are immutable, so the name below changes with every commit and
+    # the task is recreated with the new content. Metrics gap is a few seconds;
+    # the TSDB is untouched.
+    configs:
+      - source: prometheus_yml
+        target: /etc/prometheus/prometheus.yml
+        mode: 0444
+      - source: prom_rules_alert
+        target: /etc/prometheus/rules/alert.rules.yml
+        mode: 0444
+      - source: prom_rules_postgres
+        target: /etc/prometheus/rules/postgres.alert.rules.yml
+        mode: 0444
+      - source: prom_rules_jenkins
+        target: /etc/prometheus/rules/jenkins.rules.yml
+        mode: 0444
+      - source: prom_rules_swarm
+        target: /etc/prometheus/rules/swarm.rules.yml
+        mode: 0444
     user: 65534:999
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -115,6 +141,32 @@ services:
     labels:
       org.label-schema.group: "monitoring"
 
+# Swarm configs are immutable: a given name always carries the content it was
+# created with. The version suffix is the git commit, set by Jenkins in .env, so
+# every commit that touches these files produces new objects and the running
+# task is replaced with them. Deploying by hand? Pass it yourself:
+#
+#   PROM_CONFIG_VERSION=$(git rev-parse --short HEAD) make deploy-monitoring
+#
+# Old objects stay behind once nothing references them; `docker config prune`
+# is safe to run occasionally.
+configs:
+  prometheus_yml:
+    file: ./prometheus/prometheus.yml
+    name: prometheus_yml_${PROM_CONFIG_VERSION:-manual}
+  prom_rules_alert:
+    file: ./prometheus/rules/alert.rules.yml
+    name: prom_rules_alert_${PROM_CONFIG_VERSION:-manual}
+  prom_rules_postgres:
+    file: ./prometheus/rules/postgres.alert.rules.yml
+    name: prom_rules_postgres_${PROM_CONFIG_VERSION:-manual}
+  prom_rules_jenkins:
+    file: ./prometheus/rules/jenkins.rules.yml
+    name: prom_rules_jenkins_${PROM_CONFIG_VERSION:-manual}
+  prom_rules_swarm:
+    file: ./prometheus/rules/swarm.rules.yml
+    name: prom_rules_swarm_${PROM_CONFIG_VERSION:-manual}
+
 networks:
   monitoring_net:
     driver: overlay
@@ -129,12 +181,6 @@ volumes:
       type: "none"
       o: "bind"
       device: "/data/prometheus_data"
-  prometheus_config:
-    driver: local
-    driver_opts:
-      type: "none"
-      o: "bind"
-      device: "/data/prometheus_config"
   grafana:
     driver: local
     driver_opts:
