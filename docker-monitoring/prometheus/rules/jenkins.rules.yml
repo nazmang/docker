@@ -51,8 +51,10 @@ groups:
   - alert: JenkinsExtremeCPUUsage
     expr: rate(process_cpu_seconds_total{job="jenkins"}[5m]) > 2
     for: 2m
+    # Downgraded from critical: two cores busy is what a CI server looks like
+    # while it works. JenkinsDown covers the case that actually matters.
     labels:
-      severity: critical
+      severity: warning
     annotations:
       summary: Jenkins extreme CPU usage
       description: Jenkins uses more than 2 CPU cores.
@@ -130,8 +132,11 @@ groups:
   - alert: JenkinsNoFreeExecutors
     expr: jenkins_executor_in_use_value{job="jenkins"} == jenkins_executor_count_value{job="jenkins"}
     for: 3m
+    # Downgraded from critical: a saturated queue is a capacity signal, not an
+    # outage. JenkinsQueueStuck stays critical -- that one means work is not
+    # moving at all.
     labels:
-      severity: critical
+      severity: warning
     annotations:
       summary: Jenkins has no free executors
       description: All Jenkins executors are busy.
@@ -159,8 +164,11 @@ groups:
         increase(jenkins_runs_total_total{job="jenkins"}[15m])
       ) > 0.3
     for: 5m
+    # Downgraded from critical: failing builds are a signal for whoever wrote
+    # the code, and the server is perfectly healthy while they fail. Paging on
+    # this is how people learn to silence a topic.
     labels:
-      severity: critical
+      severity: warning
     annotations:
       summary: Jenkins build failure rate is high
       description: More than 30% of Jenkins runs failed in the last 15 minutes.

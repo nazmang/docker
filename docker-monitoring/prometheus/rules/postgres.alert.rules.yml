@@ -58,7 +58,16 @@ groups:
 
       # === REPLICATION LAG ===
       - alert: PostgreSQLReplicationLag
-        expr: pg_last_xact_replay_timestamp > 30
+        # Was `pg_last_xact_replay_timestamp > 30`. That metric does not exist
+        # in this exporter, and comparing a unix timestamp against 30 seconds
+        # would not have meant anything if it did -- the rule was critical and
+        # unfireable. The is_replica guard is what makes the new version
+        # correct rather than merely quiet: on this standalone instance it
+        # evaluates to nothing, and it starts working by itself if a replica is
+        # ever added.
+        expr: |
+          pg_replication_lag_seconds > 30
+          and on(instance) pg_replication_is_replica == 1
         for: 1m
         labels:
           severity: critical
@@ -68,8 +77,13 @@ groups:
 
       # === AUTOVACUUM / DEAD TUPLES ===
       - alert: PostgreSQLTableBloat
+        # Zabbix rewrites rows constantly, so dead tuples above this threshold
+        # are its normal state rather than an event. At 10m the rule fired
+        # continuously (it was firing when this was written) and taught
+        # everyone to ignore it. At 6h it means what it should: autovacuum is
+        # not keeping up.
         expr: pg_stat_user_tables_n_dead_tup{datname!~"template.*"} > 100000
-        for: 10m
+        for: 6h
         labels:
           severity: warning
         annotations:
@@ -78,10 +92,16 @@ groups:
 
       # === DISK / WAL ===
       - alert: PostgreSQLWALDiskUsage
-        expr: (pg_wal_total_bytes / pg_wal_size_limit_bytes) > 0.9
+        # Neither pg_wal_total_bytes nor pg_wal_size_limit_bytes exists in this
+        # exporter; the real names are below, so this rule could not fire
+        # either. Downgraded from critical while fixing it: max_wal_size is a
+        # checkpoint target, not a hard ceiling, and exceeding it under write
+        # load is normal rather than an outage. Actually filling the filesystem
+        # is caught by HighDiskUsage* on the host.
+        expr: (pg_wal_size_bytes / pg_settings_max_wal_size_bytes) > 0.9
         for: 5m
         labels:
-          severity: critical
+          severity: warning
         annotations:
           summary: "PostgreSQL WAL disk usage high on {{ $labels.instance }}"
           description: "WAL usage is above 90% ({{ $value }}). Consider adding storage or adjusting checkpoint settings."
