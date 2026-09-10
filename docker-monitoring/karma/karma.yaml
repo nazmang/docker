@@ -43,8 +43,9 @@ silenceForm:
   strip:
     # These change between firings of the same problem, so leaving them in a
     # silence makes it match one instance and miss the next.
-    - job
-    - __name__
+    labels:
+      - job
+      - __name__
 
 ui:
   refresh: 30s
