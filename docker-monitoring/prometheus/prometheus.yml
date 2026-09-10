@@ -76,6 +76,23 @@ scrape_configs:
       - source_labels: [__meta_dockerswarm_node_id]
         target_label: node_id
 
+  # Hosts outside the Swarm that nothing else watches. They carry the storage
+  # everything else stands on: nas01 exports /srv/data over NFS to the Swarm
+  # nodes AND to the Kubernetes cluster, so it filling up is a two-platform
+  # outage. Until 2026-09-10 neither Prometheus scraped it at all.
+  #
+  # No dedicated rules are needed for them: the thresholds in
+  # rules/alert.rules.yml match on node_* metrics without a job selector, so
+  # disk, inode, memory, filesystem-readonly and ServiceDown all apply here the
+  # moment the target appears.
+  - job_name: "infra-hosts"
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["10.163.11.100:9100"]
+        labels:
+          instance: "nas01"
+          role: "nfs-server"
+
   - job_name: "prometheus"
     scrape_interval: 20s
     static_configs:

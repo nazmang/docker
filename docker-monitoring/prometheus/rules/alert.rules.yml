@@ -131,6 +131,27 @@ groups:
       summary: "Disk almost full"
       description: "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ humanize $value }}% full."
 
+  - alert: DiskWillFillIn24h
+    # The thresholds above catch a disk that is already full; this catches one
+    # that is going to be. Added when nas01 came under monitoring on
+    # 2026-09-10 -- its /srv/data is 40G and backs both the Swarm and the
+    # Kubernetes cluster, so the useful warning is the one that arrives before
+    # the filesystem reaches 95%.
+    expr: |
+      predict_linear(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}[6h], 24 * 3600) < 0
+      and
+      node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}
+      /
+      node_filesystem_size_bytes{fstype!~"tmpfs|overlay"} < 0.30
+    for: 30m
+    labels:
+      severity: warning
+      category: resource
+      team: platform
+    annotations:
+      summary: "Disk fills within 24h"
+      description: "{{ $labels.mountpoint }} on {{ $labels.instance }} is trending to zero free space within 24 hours."
+
   - alert: InodeExhaustion
     expr: node_filesystem_files_free / node_filesystem_files < 0.1
     for: 10m
