@@ -30,3 +30,18 @@ creation_rules:
   - path_regex: docker-opensearch/admin-credentials\.yaml$
     age: "age1wp7n5rlrjdqjx7hpkfv35ejwauuggyncl0cu4zllcq59a696sudqnucqfe"
     encrypted_regex: ^(password)$
+
+  # Documentation. No keys or passwords in these files -- what they carry is a
+  # map of the infrastructure, and this repository is public. Encrypted whole,
+  # as binary:
+  #
+  #   sops -e --input-type binary --output-type json X.md > X.md.sops
+  #   sops -d --input-type json --output-type binary X.md.sops > X.md
+  #
+  # Plaintext .md is gitignored; the .sops file beside it is what git carries.
+  # README.md files stay readable on purpose -- they are inventories, not maps.
+  - path_regex: docker-opensearch/SECURITY-CONFIG\.md(\.sops)?$
+    age: "age1wp7n5rlrjdqjx7hpkfv35ejwauuggyncl0cu4zllcq59a696sudqnucqfe"
+
+  - path_regex: docker-vault-transit/UNSEAL\.md(\.sops)?$
+    age: "age1wp7n5rlrjdqjx7hpkfv35ejwauuggyncl0cu4zllcq59a696sudqnucqfe"

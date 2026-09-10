@@ -1,3 +1,7 @@
 *.env
 *.ovpn
 .vagrant
+
+# Documentation is committed encrypted (see .sops.yaml); plaintext stays local.
+docker-opensearch/SECURITY-CONFIG.md
+docker-vault-transit/UNSEAL.md
