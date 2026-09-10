@@ -1,0 +1,84 @@
+###############################################################################
+# Swarm service state.
+#
+# Until 2026-09-10 nothing alerted when a Swarm service died. ServiceDown in
+# alert.rules.yml is `up == 0`, which covers only the handful of jobs
+# Prometheus scrapes -- node-exporter and cAdvisor keep answering while every
+# application on the node is gone. OpenSearch, Grafana, the ntfy bridge and the
+# transit Vault could all drop to zero replicas in silence.
+#
+# Metrics come from swarm-exporter (see swarm-exporter/exporter.py).
+###############################################################################
+groups:
+
+- name: swarm_services
+  rules:
+
+  - alert: SwarmServiceDown
+    expr: |
+      swarm_service_replicas_running == 0
+      and
+      swarm_service_replicas_desired > 0
+    for: 3m
+    labels:
+      severity: critical
+      category: availability
+      team: platform
+    annotations:
+      summary: "Swarm service {{ $labels.service }} has no running tasks"
+      description: "{{ $labels.service }} (stack {{ $labels.stack }}, {{ $labels.mode }}) should be running and has zero running tasks."
+
+  - alert: SwarmServiceDegraded
+    # Deliberately slower than SwarmServiceDown: a rolling update or an image
+    # pull legitimately runs below the desired count for a few minutes.
+    expr: |
+      swarm_service_replicas_running < swarm_service_replicas_desired
+    for: 15m
+    labels:
+      severity: warning
+      category: availability
+      team: platform
+    annotations:
+      summary: "Swarm service {{ $labels.service }} is short of replicas"
+      description: "{{ $labels.service }} (stack {{ $labels.stack }}) has fewer running tasks than desired for 15 minutes."
+
+  - alert: SwarmServiceTasksFailing
+    # Tasks the manager still wants running but that are in failed, rejected or
+    # orphaned state. A service that keeps restarting shows up here while
+    # SwarmServiceDown stays quiet, because a crash-looping task is sometimes
+    # briefly running.
+    expr: swarm_service_tasks{state="failed"} > 0
+    for: 15m
+    labels:
+      severity: warning
+      category: availability
+      team: platform
+    annotations:
+      summary: "Swarm service {{ $labels.service }} has failing tasks"
+      description: "{{ $value }} task(s) of {{ $labels.service }} are in a failed state and the manager still wants them running."
+
+  - alert: SwarmNodeNotReady
+    expr: swarm_node_ready == 0
+    for: 5m
+    labels:
+      severity: critical
+      category: availability
+      team: platform
+    annotations:
+      summary: "Swarm node {{ $labels.node }} is not ready"
+      description: "Node {{ $labels.node }} ({{ $labels.role }}) is down or drained."
+
+  - alert: SwarmExporterCollectionFailing
+    # The exporter answers 200 with swarm_exporter_up 0 when the Docker API
+    # does not respond, rather than failing the scrape: "the exporter is gone"
+    # and "the API is not answering" call for different responses, and only
+    # this way can Prometheus tell them apart.
+    expr: swarm_exporter_up == 0
+    for: 10m
+    labels:
+      severity: warning
+      category: availability
+      team: platform
+    annotations:
+      summary: "swarm-exporter cannot read the Docker API"
+      description: "The exporter is running but its calls to the socket proxy are failing, so every alert in this file is blind."

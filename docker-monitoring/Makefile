@@ -35,6 +35,10 @@ deploy-cadvisor:
 deploy-nodeexporter:
 	@$(MAKE) deploy-service COMPOSE_FILE=docker-compose.nodeexporter.yml SERVICE=nodeexporter
 
+.PHONY: deploy-swarmexporter
+deploy-swarmexporter:
+	@$(MAKE) deploy-service COMPOSE_FILE=docker-compose.swarmexporter.yml SERVICE=swarmexporter
+
 .PHONY: deploy-dockerproxy
 deploy-dockerproxy:
 	@$(MAKE) deploy-service COMPOSE_FILE=docker-compose.dockerproxy.yml SERVICE=dockerproxy
@@ -46,6 +50,7 @@ deploy-all: init-swarm
 	@$(MAKE) deploy-cadvisor COMPOSE_FILE=docker-compose.cadvisor.yml
 	@$(MAKE) deploy-nodeexporter COMPOSE_FILE=docker-compose.nodeexporter.yml
 	@$(MAKE) deploy-dockerproxy COMPOSE_FILE=docker-compose.dockerproxy.yml
+	@$(MAKE) deploy-swarmexporter COMPOSE_FILE=docker-compose.swarmexporter.yml
 	@echo "${STACK_NAME} stack deployed to context '$(DOCKER_CONTEXT)'."
 
 # Check the status of the services

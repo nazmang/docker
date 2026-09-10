@@ -1,0 +1,52 @@
+version: "3.8"
+
+# Per-service replica metrics for the Swarm. See swarm-exporter/exporter.py for
+# why this exists rather than cAdvisor's container metrics.
+#
+# The source is delivered as a Swarm *config*, not a bind mount: the manager
+# distributes it to whichever node runs the task, so there is no file to copy
+# onto a host by hand and nothing to drift. The cost is that configs are
+# immutable -- editing exporter.py means bumping the `name:` below (v1 -> v2),
+# otherwise `docker stack deploy` keeps handing out the old content. That is
+# the one thing to remember when changing the exporter.
+
+services:
+  swarmexporter:
+    image: python:${SWARM_EXPORTER_PYTHON_TAG:-3.12-alpine}
+    command: ["python", "/opt/exporter.py"]
+    environment:
+      - DOCKER_API=http://dockerproxy:2375
+    configs:
+      - source: swarm_exporter_py
+        target: /opt/exporter.py
+        mode: 0444
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          # dockerproxy runs on the manager, and the Docker API it proxies is
+          # the manager's. One replica is right: this reports cluster-wide
+          # state, so a second would only duplicate every series.
+          - "node.role==manager"
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
+      restart_policy:
+        condition: any
+    networks:
+      - monitoring_net
+    labels:
+      org.label-schema.group: "monitoring"
+
+configs:
+  swarm_exporter_py:
+    file: ./swarm-exporter/exporter.py
+    name: swarm_exporter_py_v1
+
+networks:
+  monitoring_net:
+    name: monitoring_monitoring_net
+    external: true

@@ -13,6 +13,7 @@ rule_files:
   - "rules/postgres.alert.rules.yml"
   - "rules/jenkins.rules.yml"
   - "rules/zabbix.rules.yml"
+  - "rules/swarm.rules.yml"
 
 # A scrape configuration containing exactly one endpoint to scrape.
 scrape_configs:
@@ -104,6 +105,12 @@ scrape_configs:
     scrape_interval: 20s
     static_configs:
       - targets: ["prometheus:9090"]
+
+  # Per-service replica state for the Swarm; see swarm-exporter/exporter.py.
+  - job_name: "swarm-exporter"
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["swarmexporter:9107"]
 
   - job_name: "postgres-zabbix"
     scrape_interval: 45s
