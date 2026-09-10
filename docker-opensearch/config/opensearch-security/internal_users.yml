@@ -1,49 +1,77 @@
----
 _meta:
-  type: "internalusers"
-  config_version: 2
+    type: internalusers
+    config_version: 2
 admin:
-  hash: "$2y$12$HAApINMUMuUmo9fSXxV8w.ctg7uNpu7cI/caaKQcFcGPYbTVMFA1m"
-  reserved: true
-  backend_roles:
-  - "admin"
-  description: "Demo admin user"
+    hash: ENC[AES256_GCM,data:2lf93xoTy16h3w3CbCYyK+dlRoQuzYv+ioGjwWr48b6TecQO8zRrPgDMs9eT3kqWvRqicpfXpd05uS8w,iv:aMNibhWa4IIzAB7Ets80BbjjYE5F9z2eRHAO/Oee5XA=,tag:6yX/EKTLTRlO7uVUGd8FWg==,type:str]
+    reserved: true
+    backend_roles:
+        - admin
+    description: Demo admin user
 anomalyadmin:
-  hash: "$2y$12$TRwAAJgnNo67w3rVUz4FIeLx9Dy/llB79zf9I15CKJ9vkM4ZzAd3."
-  reserved: false
-  opendistro_security_roles:
-  - "anomaly_full_access"
-  description: "Demo anomaly admin user, using internal role"
+    hash: ENC[AES256_GCM,data:uTTWeXsGeboyNT1udBl0ZBwf0y8LC25J1W9eVarotyQUGHZ4BHVZSFfDf6J/T1Zp545BxS98630ulUsU,iv:2gTk/Lm2npjTEd+UjLVo0oPSkEvhcov+uoTsEbXp8IY=,tag:LOE1Tk7nMOB6llP1Ehluxg==,type:str]
+    reserved: false
+    opendistro_security_roles:
+        - anomaly_full_access
+    description: Demo anomaly admin user, using internal role
 kibanaserver:
-  hash: "$2a$12$4AcgAt3xwOWadA5s5blL6ev39OXDNhmOesEoo33eZtrq2N0YrU3H."
-  reserved: true
-  description: "Demo OpenSearch Dashboards user"
+    hash: ENC[AES256_GCM,data:U0E6+PRXFbdp3hEfWDV4IF+/dAaC6NrHM+8aTPFCfm/vpiFlLge+5Q05z7sD+mPVaoWAJbjRMFYsjZOS,iv:aHJ/1V7JkvGw81byLXhhAAhbjP3ZqpdYY2auu3SlqxA=,tag:O/DdyrNkMdPDRvp2HsuR6g==,type:str]
+    reserved: true
+    description: Demo OpenSearch Dashboards user
 kibanaro:
-  hash: "$2a$12$JJSXNfTowz7Uu5ttXfeYpeYE0arACvcwlPBStB1F.MI7f0U9Z4DGC"
-  reserved: false
-  backend_roles:
-  - "kibanauser"
-  - "readall"
-  attributes:
-    attribute1: "value1"
-    attribute2: "value2"
-    attribute3: "value3"
-  description: "Demo OpenSearch Dashboards read only user, using external role mapping"
+    hash: ENC[AES256_GCM,data:vKeovlbZ5yVKz+cQpKDQtyKaMekBsXPpns9YC16P4wNa8BsnI/cvPkeD66lvlsbgBQH/4VcbKeh1dYOZ,iv:8/TXdgCuLcjrvHTV+0kcJv+Nqeh+YdAwgkvTHp22cxM=,tag:ShB4a1YqTyysRoXSAjLaqQ==,type:str]
+    reserved: false
+    backend_roles:
+        - kibanauser
+        - readall
+    attributes:
+        attribute1: value1
+        attribute2: value2
+        attribute3: value3
+    description: Demo OpenSearch Dashboards read only user, using external role mapping
 logstash:
-  hash: "$2a$12$u1ShR4l4uBS3Uv59Pa2y5.1uQuZBrZtmNfqB3iM/.jL0XoV9sghS2"
-  reserved: false
-  backend_roles:
-  - "logstash"
-  description: "Demo logstash user, using external role mapping"
+    hash: ENC[AES256_GCM,data:uYAWQ8s8h9jbLLMs3an6Htw5h3WkI6EarJZXMXlaWxPWmi6u1WyjeOmr8L0SD/tQaKOEuynZbJYFMaor,iv:W63MMnKPbi7k5maBaHKPBBpkznrsJPMC8hyBd2hrCkg=,tag:QsssiMLarpesa2iD1zSNDQ==,type:str]
+    reserved: false
+    backend_roles:
+        - logstash
+    description: Demo logstash user, using external role mapping
 readall:
-  hash: "$2a$12$ae4ycwzwvLtZxwZ82RmiEunBbIPiAmGZduBAjKN0TXdwQFtCwARz2"
-  reserved: false
-  backend_roles:
-  - "readall"
-  description: "Demo readall user, using external role mapping"
+    hash: ENC[AES256_GCM,data:Xs7TanQMRgu/cZtbqchHY+4wseAYaqvbxSNdcE0nQqvlniZ1lc4Qea5c2niLjooiAYTnGMb0MGOfDqHn,iv:d+FdYH2f8m0PHCvKCAnd8UemrGt9pJpHR+4irIAnJuM=,tag:oyW9ozCtfUqAZtegMT8geg==,type:str]
+    reserved: false
+    backend_roles:
+        - readall
+    description: Demo readall user, using external role mapping
 snapshotrestore:
-  hash: "$2y$12$DpwmetHKwgYnorbgdvORCenv4NAK8cPUg8AI6pxLCuWf/ALc0.v7W"
-  reserved: false
-  backend_roles:
-  - "snapshotrestore"
-  description: "Demo snapshotrestore user, using external role mapping"
+    hash: ENC[AES256_GCM,data:fYycYB09ySN+tubnjVwgRpUeeznhzdurvHHMBnOSwAGpINbidv0Ijj5iPWs+X/fms7o5oW1bYkj6eJyt,iv:B3mUsdYNbzrJybxh2BvmHlsVMUPN2LgSYcnmvKd4H2I=,tag:KbS/kom2IYfVvGEuwxYRKA==,type:str]
+    reserved: false
+    backend_roles:
+        - snapshotrestore
+    description: Demo snapshotrestore user, using external role mapping
+fluentd:
+    hash: ENC[AES256_GCM,data:GdjM1bOG3FHd6QbxkmgryF5ntmJvH731e7keKAYigaWRsdxyMogX5RmQekD6esa0mSroWpC8E+xFAjGB,iv:xDrRyPxVOP0b6aGfNAO9fFoRatZ9sZ/8E5l/GR52B8A=,tag:AkV+7M81EUvoHqU77s+eFg==,type:str]
+    reserved: false
+    opendistro_security_roles:
+        - fluentd_writer
+    description: Log shipper for the Kubernetes cluster. Writes nginx-* and fluentd* indices.
+wazuh:
+    hash: ENC[AES256_GCM,data:EdBBde9OSEJ73Ljwf0PEIgMDFLNWfpBnY4tWCzcxwt5bMZXr/YjZvsPA4MKo1H03AqFeNp5+ZUpERSj9,iv:sYIQjGnWAcRFMuUZkGSnp0uxsGzmn7n8x+SP3/SXe0Y=,tag:35oKJkpJ+vGAxiOxEnWsiQ==,type:str]
+    description: Wazuh user
+sops:
+    kms: []
+    gcp_kms: []
+    azure_kv: []
+    hc_vault: []
+    age:
+        - recipient: age1wp7n5rlrjdqjx7hpkfv35ejwauuggyncl0cu4zllcq59a696sudqnucqfe
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA5M1NkWEZudnRFb0JIQU1K
+            L0F4cVEzZlZwU3ZlVUNtMWdtN0VkRkpXU0YwCmI4dG52eXc0TG81VE0vZllnMTJB
+            ZDNUUUhzSXh4QTlLK3d6NGtzbDJOQUEKLS0tIEg0N1dHenVtMEtkb0NncGoxd2JO
+            SzBWOGg2NWNseVNqTjMrT3hBaXNnMncKyix/yrH5Xrw5heEGZAjJf0m4TgeiQP28
+            1l1DOxidDu3A+hV/4Td1pAGD8GFHP6FdCrUWEreMG5sUCYoHnuRihQ==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-09-10T17:22:55Z"
+    mac: ENC[AES256_GCM,data:pFltnwAMnoCp2KvaOE0g9wFDvKCncRao8QNQ5328pxAOyTHrWD4cOm+3stfDyuUaOQd7En41WeZzUwnuM3c6GyezSfkqCs1BxpGJtjiVHT7V23epYzLBFRA0X3BXohc1drMAwYF178KvXgr6GoG+yOe1JbEJOldh6nFjNI8bL6Y=,iv:DKgs4bBYcDh7M+ZJp3QDHVG7xTCgGqQSK2OC9FxqmVs=,tag:CJPqrK9OhWQblsqvj2WMcQ==,type:str]
+    pgp: []
+    encrypted_regex: ^(hash)$
+    version: 3.7.1

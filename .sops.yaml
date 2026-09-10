@@ -1,0 +1,32 @@
+# Every rule here is scoped to an exact path. There is deliberately NO catch-all:
+# `sops -e` on an unlisted file errors with "no matching creation rules found",
+# which is the design -- add an explicit rule rather than letting a broad regex
+# guess which fields are sensitive.
+#
+# Same age recipient as the argocd-apps and k8s repositories. The private half
+# lives in argocd-apps/.age/age.key (gitignored, mode 600).
+#
+# This repository is PUBLIC. It shipped OpenSearch's bcrypt password hashes in
+# the clear for months before this file existed -- see the note on
+# internal_users.yml below.
+creation_rules:
+  # OpenSearch's internal users. Every entry carries a bcrypt password hash.
+  #
+  # These were committed unencrypted in 6aa32a7 and were downloadable from
+  # raw.githubusercontent.com by anyone until 2026-09-10: seven hashes,
+  # including admin's. The admin hash there no longer matches the live password
+  # (it was changed at some point), but the other six may well still be current.
+  #
+  # This file is NOT deployed by the Jenkins pipeline -- the security config on
+  # the host at /data/opensearch_config/ is managed by hand, and this copy had
+  # already drifted from it. Encrypting it costs nothing operationally.
+  - path_regex: docker-opensearch/config/opensearch-security/internal_users\.yml$
+    age: "age1wp7n5rlrjdqjx7hpkfv35ejwauuggyncl0cu4zllcq59a696sudqnucqfe"
+    encrypted_regex: ^(hash)$
+
+  # OpenSearch's admin password. The Jenkins job takes it as a build PARAMETER
+  # rather than a stored credential, so before this file the only copy lived in
+  # a gitignored .env on one laptop -- outside git and outside any backup.
+  - path_regex: docker-opensearch/admin-credentials\.yaml$
+    age: "age1wp7n5rlrjdqjx7hpkfv35ejwauuggyncl0cu4zllcq59a696sudqnucqfe"
+    encrypted_regex: ^(password)$

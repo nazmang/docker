@@ -14,6 +14,9 @@ all_access:
   reserved: false
   backend_roles:
   - "admin"
+  users:
+  - "admin"
+  - "wazuh"
   description: "Maps admin to all_access"
 
 own_index:
@@ -45,5 +48,9 @@ manage_snapshots:
 
 kibana_server:
   reserved: true
+  users:
+  - "kibanaserver"
+
+wazuh_indices_access:
   users:
   - "kibanaserver"

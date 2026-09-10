@@ -470,3 +470,45 @@ ltr_full_access:
     reserved: true
     cluster_permissions:
       - cluster:admin/ltr/*
+
+# Wazuh indexer indices. Added on the host by hand at some point and back-ported
+# here; the hand edit had spliced it into ltr_full_access's permission list,
+# leaving a stray `- cluster:admin/ltr/*` inside this role and the whole file
+# invalid YAML. The live security index has no cluster permission here, so the
+# stray line was a paste error, not config.
+wazuh_indices_access:
+  reserved: false
+  cluster_permissions: []
+  index_permissions:
+    - index_patterns:
+        - "wazuh-*"
+      fls: []
+      masked_fields: []
+      allowed_actions:
+        - "indices_all"
+  tenant_permissions: []
+
+# Log shipper for the Kubernetes cluster (see fluentd in internal_users.yml).
+# Created via the security API on 2026-09-10 and back-ported here: the user it
+# belongs to had vanished from the security index because it was never in
+# internal_users.yml, so re-applying this directory erased it. A role that
+# exists only in the index has the same failure ahead of it.
+fluentd_writer:
+  reserved: false
+  cluster_permissions:
+    - cluster_monitor
+    - cluster_composite_ops
+    - "indices:admin/template/get"
+    - "indices:admin/template/put"
+  index_permissions:
+    - index_patterns:
+        - "nginx-*"
+        - "fluentd*"
+      fls: []
+      masked_fields: []
+      allowed_actions:
+        - crud
+        - create_index
+        - "indices:admin/mapping/put"
+        - "indices:admin/mapping/get"
+  tenant_permissions: []
