@@ -1,0 +1,72 @@
+version: "3.8"
+
+# Transit Vault -- the unseal key holder for the Kubernetes cluster's Vault.
+#
+# Why it exists: the cluster's Vault uses a Shamir seal, and its auto-unseal was
+# a one-shot Job that ran at install time and never again. Every pod restart
+# left Vault sealed until someone unsealed it by hand -- which happened three
+# times in one afternoon on 2026-09-10 while changing its config. With a transit
+# seal the cluster's Vault unseals itself on every start.
+#
+# This does not remove the problem so much as isolate it: this Vault is itself
+# Shamir-sealed and needs unsealing after its own restarts. The difference is
+# that it holds one key rather than every secret, and Swarm services here run
+# for months without restarting, while the cluster churns.
+#
+# Deliberately minimal: no UI, no application secrets, no reason to grow.
+
+services:
+  vault-transit:
+    image: hashicorp/vault:${VAULT_TRANSIT_TAG:-1.20.1}
+    command: ["vault", "server", "-config=/vault/config/vault.hcl"]
+    cap_add:
+      # Vault wants mlock to keep memory off disk. disable_mlock is set in the
+      # config, but the capability costs nothing and lets that be reconsidered.
+      - IPC_LOCK
+    environment:
+      - VAULT_ADDR=http://127.0.0.1:8200
+    volumes:
+      - vault_transit_data:/vault/data
+      - vault_transit_config:/vault/config
+    ports:
+      - 8200:8200
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          # Pinned: the volumes are bind mounts on this node's local disk, so
+          # the service cannot move without leaving its data behind.
+          - node.hostname == dkr01
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+      restart_policy:
+        condition: any
+    networks:
+      - vault_transit_net
+    labels:
+      org.label-schema.group: "vault"
+
+networks:
+  vault_transit_net:
+    driver: overlay
+    attachable: true
+
+volumes:
+  # Local disk on dkr01, NOT /data -- that is nas01 over NFS, where Vault's
+  # storage engines behave as badly as SQLite did.
+  vault_transit_data:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "/opt/vault-transit/data"
+  vault_transit_config:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "/opt/vault-transit/config"
