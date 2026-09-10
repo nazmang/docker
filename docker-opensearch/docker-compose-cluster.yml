@@ -11,7 +11,7 @@ services:
       placement:
         constraints:
           - "node.role==worker"
-          # - "node.labels.os_node==1"  # pin to a specific Swarm worker
+          # - "node.labels.os_node==1"
     env_file:
       - .env
     environment:
@@ -31,10 +31,10 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    ports:
-      - target: 9200
-        published: 9200
-        mode: host
+    # ports:
+    #   - target: 9200
+    #     published: 9200
+    #     mode: host
     networks:
       - opensearch-net
     volumes:
@@ -74,6 +74,20 @@ services:
       - opensearch-data2:/usr/share/opensearch/data
       - opensearch-conf:/usr/share/opensearch/config
 
+  opensearch-proxy:
+    image: haproxy:alpine
+    deploy:
+      placement:
+        constraints:
+          - "node.role==manager"
+    ports:
+      - "9200:9200"
+    configs:
+      - source: haproxy_opensearch_v${CONF_VERSION}
+        target: /usr/local/etc/haproxy/haproxy.cfg
+    networks:
+      - opensearch-net
+
   dashboards:
     image: opensearchproject/opensearch-dashboards:2.19.5
     deploy:
@@ -110,6 +124,10 @@ volumes:
       type: "none"
       o: "bind"
       device: "/data/opensearch_config"
+
+configs:
+  haproxy_opensearch_v${CONF_VERSION}:
+    file: ./config/haproxy-opensearch.cfg
 
 networks:
   opensearch-net:

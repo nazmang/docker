@@ -114,6 +114,41 @@ services:
     labels:
       org.label-schema.group: "monitoring"
 
+  # Dashboard over both Alertmanagers -- this stack's and the Kubernetes
+  # cluster's. Alertmanager's own UI is a flat list with almost no grouping,
+  # which stops being workable the moment more than a handful of alerts fire.
+  #
+  # Not attached to gateway_gw_net on purpose: karma can create silences, and
+  # silencing is exactly what an attacker does before doing something noisy.
+  # It listens on the host port only, reachable over the internal network. If
+  # it is ever published, it needs authentication in front of it first.
+  karma:
+    image: ghcr.io/prymitive/karma:${KARMA_TAG:-v0.121}
+    command: ["--config.file=/etc/karma/karma.yaml"]
+    configs:
+      - source: karma_yaml
+        target: /etc/karma/karma.yaml
+        mode: 0444
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - "node.role==manager"
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
+      restart_policy:
+        condition: any
+    ports:
+      - 8082:8080
+    networks:
+      - monitoring_net
+    labels:
+      org.label-schema.group: "monitoring"
+
   # Translates Alertmanager webhooks into readable ntfy notifications. Without
   # it, Alertmanager posts its own JSON and ntfy publishes the payload verbatim
   # as the message text -- verified against the live server, and unreadable on a
@@ -151,6 +186,9 @@ services:
 # Old objects stay behind once nothing references them; `docker config prune`
 # is safe to run occasionally.
 configs:
+  karma_yaml:
+    file: ./karma/karma.yaml
+    name: karma_yaml_${PROM_CONFIG_VERSION:-manual}
   prometheus_yml:
     file: ./prometheus/prometheus.yml
     name: prometheus_yml_${PROM_CONFIG_VERSION:-manual}

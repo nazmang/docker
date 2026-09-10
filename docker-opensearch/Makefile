@@ -16,15 +16,15 @@ init-swarm:
 
 .PHONY: clean-configs
 clean-configs:
-	@echo "Cleaning up old configs (keeping version suffix opensearch_config_v$(CONF_VERSION))..."
-	@for config in $$(docker config ls --format '{{.Name}}' | grep -e 'opensearch_config.*_v'); do \
+	@echo "Cleaning up old configs (keeping version suffix _v$(CONF_VERSION))..."
+	@for config in $$(docker config ls --format '{{.Name}}' | grep '_v[0-9]*$$'); do \
 		if echo "$$config" | grep -q "_v$(CONF_VERSION)$$"; then \
 			echo "Keeping current config: $$config"; \
 		else \
 			echo "Removing outdated config: $$config"; \
 			docker config rm "$$config" || true; \
 		fi; \
-	done	
+	done
 
 .PHONY: deploy-service
 deploy-service:

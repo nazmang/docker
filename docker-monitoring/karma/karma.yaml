@@ -1,0 +1,63 @@
+# karma -- a read-oriented dashboard over Alertmanager.
+#
+# Alertmanager's own UI shows a flat list and almost no grouping, which is
+# workable with three alerts and useless with thirty. karma groups by label,
+# shows both Alertmanagers side by side, and can silence from the UI.
+#
+# Both instances are listed on purpose: the Swarm and the Kubernetes cluster
+# each run their own Alertmanager, and until now there was no single place to
+# see what was firing across the two.
+alertmanager:
+  interval: 60s
+  servers:
+    - name: swarm
+      uri: http://alertmanager:9093
+      timeout: 10s
+      readonly: false
+    - name: cluster
+      # Reached over its public address: Swarm has no route into the cluster's
+      # service network. Same path the ntfy bridge already uses.
+      uri: https://alertmanager.srvx.cc
+      timeout: 10s
+      readonly: false
+
+# Group by what actually distinguishes an incident here.
+labels:
+  order:
+    - severity
+    - instance
+    - service
+  color:
+    static:
+      - severity
+  valueOnly:
+    - job
+
+grid:
+  sorting:
+    order: label
+    reverse: false
+    label: severity
+
+silenceForm:
+  strip:
+    # These change between firings of the same problem, so leaving them in a
+    # silence makes it match one instance and miss the next.
+    - job
+    - __name__
+
+ui:
+  refresh: 30s
+  hideFiltersWhenIdle: false
+  colorTitlebar: true
+  minimalGroupWidth: 420
+  alertsPerGroup: 5
+  collapseGroups: collapsedOnMobile
+
+listen:
+  address: 0.0.0.0
+  port: 8080
+
+log:
+  level: info
+  format: text
