@@ -4,9 +4,7 @@
 # workable with three alerts and useless with thirty. karma groups by label,
 # shows both Alertmanagers side by side, and can silence from the UI.
 #
-# Both instances are listed on purpose: the Swarm and the Kubernetes cluster
-# each run their own Alertmanager, and until now there was no single place to
-# see what was firing across the two.
+# Only the Swarm instance for now -- see the note by the servers list.
 alertmanager:
   interval: 60s
   servers:
@@ -14,12 +12,15 @@ alertmanager:
       uri: http://alertmanager:9093
       timeout: 10s
       readonly: false
-    - name: cluster
-      # Reached over its public address: Swarm has no route into the cluster's
-      # service network. Same path the ntfy bridge already uses.
-      uri: https://alertmanager.srvx.cc
-      timeout: 10s
-      readonly: false
+    # The cluster's Alertmanager is NOT listed yet, and the reason is worth
+    # keeping: on 2026-09-10 it sat on the public internet with no
+    # authentication at all -- readable alerts, and silences creatable by
+    # anyone. Basic auth now guards it, which means karma needs credentials to
+    # reach it, and credentials do not belong in a Swarm *config* (readable by
+    # anyone who can talk to the Docker API). Adding it back is part of moving
+    # this file, alertmanager.yml and the ntfy bridge's config.scfg onto Swarm
+    # secrets rendered from SOPS at deploy time -- one mechanism, three files.
+    # Until then karma covers the Swarm side only.
 
 # Group by what actually distinguishes an incident here.
 labels:
