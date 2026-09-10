@@ -92,6 +92,13 @@ scrape_configs:
         labels:
           instance: "nas01"
           role: "nfs-server"
+      # The hypervisor. Everything else in this file runs as a VM on it, so it
+      # is the one host whose disk or memory exhaustion takes down the Swarm,
+      # the Kubernetes cluster and the NFS server at the same time.
+      - targets: ["10.164.1.1:9100"]
+        labels:
+          instance: "pve01"
+          role: "hypervisor"
 
   - job_name: "prometheus"
     scrape_interval: 20s
