@@ -45,3 +45,9 @@ creation_rules:
 
   - path_regex: docker-vault-transit/UNSEAL\.md(\.sops)?$
     age: "age1wp7n5rlrjdqjx7hpkfv35ejwauuggyncl0cu4zllcq59a696sudqnucqfe"
+
+  # Runbooks. Same reasoning as the other documentation here: no credentials in
+  # them, but a detailed description of infrastructure -- host names, paths,
+  # versions, what is exposed and what is not.
+  - path_regex: docs/.*\.md(\.sops)?$
+    age: "age1wp7n5rlrjdqjx7hpkfv35ejwauuggyncl0cu4zllcq59a696sudqnucqfe"
