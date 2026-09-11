@@ -124,6 +124,9 @@ services:
       - source: prom_rules_debian01
         target: /etc/prometheus/rules/debian01.rules.yml
         mode: 0444
+      - source: prom_rules_alertmanager
+        target: /etc/prometheus/rules/alertmanager.rules.yml
+        mode: 0444
     user: 65534:999
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -279,6 +282,9 @@ configs:
   prom_rules_debian01:
     file: ./prometheus/rules/debian01.rules.yml
     name: prom_rules_debian01_${PROM_CONFIG_VERSION:-manual}
+  prom_rules_alertmanager:
+    file: ./prometheus/rules/alertmanager.rules.yml
+    name: prom_rules_alertmanager_${PROM_CONFIG_VERSION:-manual}
   gf_provider_dashboards:
     file: ./grafana/provisioning/dashboards/dashboards.yml
     name: gf_provider_dashboards_${PROM_CONFIG_VERSION:-manual}

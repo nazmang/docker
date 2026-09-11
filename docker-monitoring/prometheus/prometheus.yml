@@ -16,6 +16,7 @@ rule_files:
   - "rules/backup.rules.yml"
   - "rules/veeam.rules.yml"
   - "rules/debian01.rules.yml"
+  - "rules/alertmanager.rules.yml"
 
 # A scrape configuration containing exactly one endpoint to scrape.
 scrape_configs:
@@ -107,6 +108,19 @@ scrape_configs:
     scrape_interval: 20s
     static_configs:
       - targets: ["prometheus:9090"]
+
+  # Alertmanager, which until 2026-09-11 was not scraped at all. It is the last
+  # link in the chain: every alert this Prometheus raises leaves through it. If
+  # it stops delivering to ntfy, every rule keeps firing correctly and nobody
+  # ever hears about it -- the symptom of a broken notification path is silence,
+  # which is indistinguishable from nothing being wrong.
+  #
+  # The cluster Prometheus has scraped its own Alertmanager all along and ships
+  # fourteen rules for it; this side had neither.
+  - job_name: "alertmanager"
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["alertmanager:9093"]
 
   # Per-service replica state for the Swarm; see swarm-exporter/exporter.py.
   # The Windows host that runs PostgreSQL 14, 1C, a domain controller and the
