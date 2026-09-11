@@ -29,8 +29,16 @@ windows_exporter, with the textfile collector and only the collectors worth
 having on this machine:
 
 ```powershell
-msiexec /i windows_exporter-<version>-amd64.msi --% ENABLED_COLLECTORS="cpu,cs,logical_disk,memory,net,os,service,system,textfile,scheduled_task" TEXTFILE_DIRS="C:\ProgramData\windows_exporter\textfile_inputs" LISTEN_PORT=9182 /qn
+msiexec /i windows_exporter-<version>-amd64.msi --% ENABLED_COLLECTORS="cpu,logical_disk,memory,net,os,service,system,textfile,scheduled_task" TEXTFILE_DIRS="C:\ProgramData\windows_exporter\textfile_inputs" LISTEN_PORT=9182 /qn
 ```
+
+**No `cs` collector.** It was removed in windows_exporter 0.31.x, and naming it
+does not degrade to a warning — the service refuses to start at all:
+`couldn't enable collectors: unknown collector cs`. Found during the real
+install on 2026-09-11 (0.31.8, revision `c73b596c`). What it used to publish —
+physical memory, logical processor count — comes from `os` and `cpu` anyway.
+
+Check the MSI against the release's `sha256sums.txt` before running it.
 
 Then the collector on a schedule — every 15 minutes is plenty for a nightly job,
 and cheap because it only tails log files:
