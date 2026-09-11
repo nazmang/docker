@@ -2,7 +2,24 @@ version: "3.8"
 
 services:
   cadvisor:
-    image: nazman/cadvisor:v0.49.1
+    # Was nazman/cadvisor:v0.49.1 -- a private image with no Dockerfile in this
+    # repository, so it could not be rebuilt, and eleven minor versions behind.
+    #
+    # It reported zero containers. Not "wrong numbers": the series existed but
+    # carried no `name` and no `image` label, only systemd slice paths like
+    # /system.slice/ModemManager.service, so every panel filtering on
+    # image!="" drew nothing. The cgroups were there all along -- 17
+    # docker-*.scope entries under /sys/fs/cgroup/system.slice on dkr01 -- 0.49
+    # simply could not identify them under Docker 29 with the containerd
+    # snapshotter.
+    #
+    # Measured on dkr01 on 2026-09-11, same node, same mounts:
+    #   v0.49.1  -> 0 series with a name
+    #   v0.60.5  -> 17, with real names and images
+    #
+    # No extra privileges: tested without --privileged and without /dev/kmsg,
+    # which cAdvisor's own docs suggest, and the labels appear regardless.
+    image: ghcr.io/google/cadvisor:${CADVISOR_TAG:-v0.60.5}
     command: --logtostderr=true
     deploy:
       mode: global
@@ -12,9 +29,11 @@ services:
         max_attempts: 3
       resources:
         limits:
-          memory: 128M
+          # 0.60.5 sits at 81 MiB on a node running 17 containers, which leaves
+          # almost nothing under the old 128M ceiling on a busier node.
+          memory: 256M
         reservations:
-          memory: 64M
+          memory: 96M
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
