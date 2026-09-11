@@ -196,15 +196,29 @@ groups:
       description: "Network errors detected on {{ $labels.device }} at {{ $labels.instance }}."
 
   - alert: NetworkDrops
-    expr: rate(node_network_receive_drop_total[5m]) > 0
-    for: 5m
+    # Was `> 0` -- any single dropped packet in five minutes raised a warning.
+    # The only interface in the fleet that ever tripped it was debian01's WiFi
+    # adapter at 2 packets per minute, which is ordinary background for a
+    # wireless NIC (unassociated frames, multicast the card filters out). An
+    # alert that fires on two packets a minute teaches people to ignore alerts,
+    # and that habit is what makes the next real one invisible.
+    #
+    # One packet per second, sustained for fifteen minutes, is a fault worth
+    # waking up to. Kept deliberately generic rather than excluding wireless
+    # interfaces: a wired NIC dropping steadily is exactly what this should
+    # catch, and carving out device names would hide it.
+    #
+    # Measured 2026-09-11 across every scraped host: one interface, 0.033/s.
+    # Nothing currently real is masked by this threshold.
+    expr: rate(node_network_receive_drop_total[5m]) > 1
+    for: 15m
     labels:
       severity: warning
       category: network
       team: platform
     annotations:
       summary: "Network packet drops"
-      description: "Packet drops detected on {{ $labels.device }} at {{ $labels.instance }}."
+      description: "{{ $labels.device }} на {{ $labels.instance }} теряет {{ $value | printf \"%.1f\" }} пакетов/с при приёме дольше 15 минут."
 
 ###############################################################################
 # NODE STABILITY
