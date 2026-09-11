@@ -20,7 +20,10 @@ providers:
     allowUiUpdates: true
     updateIntervalSeconds: 60
     options:
-      path: /etc/grafana/provisioning/dashboards
+      # Separate from the provider file itself: Grafana scans this path for
+      # *.json, and keeping the provider yml out of it avoids any question
+      # about what belongs where.
+      path: /etc/grafana/dashboards
       # Subdirectories become Grafana folders, so grafana/dashboards/Docker/
       # lands in the "Docker" folder and files at the top level land in
       # "Dashboards". This mirrors the layout the instance already had.

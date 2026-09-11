@@ -7,6 +7,39 @@ services:
       - 3000:3000
     volumes:
       - grafana:/var/lib/grafana
+    # Until 2026-09-11 this service mounted the data volume and nothing else:
+    # every dashboard existed only inside it, and the files under grafana/ in
+    # this repository were read by nobody. Swarm configs take one file each,
+    # which is why this list is long -- adding a dashboard means adding it here
+    # and in the configs block at the bottom, or it simply will not appear.
+    configs:
+      - source: gf_provider_dashboards
+        target: /etc/grafana/provisioning/dashboards/dashboards.yml
+        mode: 0444
+      - source: gf_dash_docker_containers
+        target: /etc/grafana/dashboards/Docker/docker-containers.json
+        mode: 0444
+      - source: gf_dash_docker_host
+        target: /etc/grafana/dashboards/Docker/docker-host.json
+        mode: 0444
+      - source: gf_dash_monitor_services
+        target: /etc/grafana/dashboards/Docker/monitor-services.json
+        mode: 0444
+      - source: gf_dash_certmanager_a
+        target: /etc/grafana/dashboards/Kubernetes/cert-manager-TvuRo2iMk.json
+        mode: 0444
+      - source: gf_dash_certmanager_b
+        target: /etc/grafana/dashboards/Kubernetes/cert-manager-u6M5igpWk.json
+        mode: 0444
+      - source: gf_dash_k8s
+        target: /etc/grafana/dashboards/Kubernetes/k8s-dashboard.json
+        mode: 0444
+      - source: gf_dash_nginx
+        target: /etc/grafana/dashboards/nginx.json
+        mode: 0444
+      - source: gf_dash_postgresql
+        target: /etc/grafana/dashboards/postgresql-database.json
+        mode: 0444
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
@@ -239,6 +272,33 @@ configs:
   prom_rules_debian01:
     file: ./prometheus/rules/debian01.rules.yml
     name: prom_rules_debian01_${PROM_CONFIG_VERSION:-manual}
+  gf_provider_dashboards:
+    file: ./grafana/provisioning/dashboards/dashboards.yml
+    name: gf_provider_dashboards_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_docker_containers:
+    file: ./grafana/dashboards/Docker/docker-containers.json
+    name: gf_dash_docker_containers_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_docker_host:
+    file: ./grafana/dashboards/Docker/docker-host.json
+    name: gf_dash_docker_host_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_monitor_services:
+    file: ./grafana/dashboards/Docker/monitor-services.json
+    name: gf_dash_monitor_services_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_certmanager_a:
+    file: ./grafana/dashboards/Kubernetes/cert-manager-TvuRo2iMk.json
+    name: gf_dash_certmanager_a_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_certmanager_b:
+    file: ./grafana/dashboards/Kubernetes/cert-manager-u6M5igpWk.json
+    name: gf_dash_certmanager_b_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_k8s:
+    file: ./grafana/dashboards/Kubernetes/k8s-dashboard.json
+    name: gf_dash_k8s_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_nginx:
+    file: ./grafana/dashboards/nginx.json
+    name: gf_dash_nginx_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_postgresql:
+    file: ./grafana/dashboards/postgresql-database.json
+    name: gf_dash_postgresql_${PROM_CONFIG_VERSION:-manual}
 
 networks:
   monitoring_net:
