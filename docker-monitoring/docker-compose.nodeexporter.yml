@@ -22,12 +22,20 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
       - /etc/hostname:/etc/nodename
+      # Textfile collector: anything that cannot expose an HTTP endpoint writes
+      # a .prom file here and node-exporter serves it. The first user is the
+      # PostgreSQL backup script on dkr01 (docker-postgres-backup/), which
+      # publishes when each database was last dumped -- a backup nobody checks
+      # is a backup nobody has, and this is how it becomes an alert instead of
+      # a habit.
+      - /var/lib/node_exporter/textfile:/host/textfile:ro
     command:
       - "--path.procfs=/host/proc"
       - "--path.rootfs=/rootfs"
       - "--path.sysfs=/host/sys"
       - "--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)"
       - "--no-collector.ipvs"
+      - "--collector.textfile.directory=/host/textfile"
     networks:
       - monitoring_net
     ports:

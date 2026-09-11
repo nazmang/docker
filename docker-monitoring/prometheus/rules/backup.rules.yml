@@ -1,0 +1,73 @@
+###############################################################################
+# Backups of the PostgreSQL container on dkr01 (see docker-postgres-backup/).
+#
+# Until 2026-09-11 that database had no logical backup at all. The VM is covered
+# by Proxmox, which restores an image -- useful when the host dies, useless when
+# someone drops a table or one database needs to go back an hour.
+#
+# Metrics come from the backup script through node-exporter's textfile
+# collector. That matters for what these rules can and cannot see: if the script
+# never runs, the metric simply stops changing, and a rule that only checks
+# "is it fresh" would still fire correctly -- but if the file is deleted, the
+# series disappears and a threshold rule goes quiet. Hence the absent() rule.
+###############################################################################
+groups:
+
+- name: postgres_backups
+  rules:
+
+  - alert: PostgresBackupStale
+    # The job runs at 02:30 daily. 26 hours gives it a two-hour grace period
+    # before anyone is told; a single missed night is worth knowing about,
+    # because two missed nights usually start with one nobody noticed.
+    expr: time() - pg_backup_last_success_timestamp_seconds > 26 * 3600
+    for: 30m
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Резервная копия {{ $labels.database }} устарела"
+      description: "Последняя проверенная копия сделана {{ $value | humanizeDuration }} назад. Смотрите /var/log/pg-backup.log на dkr01."
+
+  - alert: PostgresBackupVeryStale
+    expr: time() - pg_backup_last_success_timestamp_seconds > 50 * 3600
+    for: 30m
+    labels:
+      severity: critical
+      category: backup
+      team: platform
+    annotations:
+      summary: "Резервной копии {{ $labels.database }} нет больше двух суток"
+      description: "Два запуска подряд не дали проверенной копии. База работает, но восстановить её сейчас не из чего, кроме образа виртуальной машины."
+
+  - alert: PostgresBackupMetricMissing
+    # Catches the case a staleness threshold cannot: the script stopped writing
+    # the file, or node-exporter lost the textfile directory. The series is
+    # gone, so nothing evaluates -- and silence looks exactly like health.
+    expr: absent(pg_backup_last_success_timestamp_seconds)
+    for: 2h
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Метрика о резервных копиях Postgres пропала"
+      description: "Ни одной серии pg_backup_last_success_timestamp_seconds. Либо скрипт не запускается, либо node-exporter не читает textfile-каталог."
+
+  - alert: PostgresBackupShrank
+    # A dump that "succeeds" but suddenly weighs a fraction of yesterday's is
+    # the failure mode that survives every other check: the file exists, it is
+    # fresh, pg_restore reads it, and half the data is gone. Databases here grow
+    # or hold steady; they do not halve overnight.
+    expr: |
+      pg_backup_last_size_bytes
+      < 0.5 * (pg_backup_last_size_bytes offset 24h)
+    for: 1h
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Копия {{ $labels.database }} внезапно уменьшилась вдвое"
+      description: "Текущий дамп {{ $value | humanize1024 }}B против вчерашнего. Проверьте, не выгружается ли пустая или частичная база."

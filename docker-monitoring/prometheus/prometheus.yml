@@ -13,6 +13,7 @@ rule_files:
   - "rules/postgres.alert.rules.yml"
   - "rules/jenkins.rules.yml"
   - "rules/swarm.rules.yml"
+  - "rules/backup.rules.yml"
 
 # A scrape configuration containing exactly one endpoint to scrape.
 scrape_configs:
