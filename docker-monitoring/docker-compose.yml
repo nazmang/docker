@@ -2,7 +2,14 @@ version: "3.8"
 
 services:
   grafana:
-    image: grafana/grafana:${GRAFANA_TAG:-latest}
+    # Pinned, and not `latest`: the instance ran 10.3.5 for seven months while
+    # this line said latest, because the tag is only resolved when the image is
+    # pulled. A version in the file is a version someone can reason about.
+    #
+    # 10.3.5 -> 13.2.1 on 2026-09-11. Verified beforehand against a throwaway
+    # 13.2.1 fed these exact dashboards: everything rendered, including the
+    # Angular panels 13 no longer supports, which it migrates on load.
+    image: grafana/grafana:${GRAFANA_TAG:-13.2.1}
     ports:
       - 3000:3000
     volumes:
