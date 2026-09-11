@@ -16,14 +16,38 @@
       2. did it finish successfully     (declared result)
       3. did it log key/metadata errors (declared result is not trustworthy)
 
+    WHERE THE VERDICT ACTUALLY LIVES -- this cost a false alert to learn.
+
+    C:\ProgramData\Veeam\Endpoint\Job.VeeamEndpointBackup.log looks like the job
+    log and is not. It is the launcher: it records that a session started and
+    then hands off, naming the real file --
+
+      Starting job 'Bases backup', id '...'. See log file at
+      'C:\ProgramData\Veeam\Endpoint\Bases_backup\Job.Bases_backup.Backup.log'
+
+    -- and it contains no completion line at all. The first version of this
+    script globbed the top directory only, matched the launcher, found no
+    verdict, and published "failed or unknown" for a job that had just finished
+    Success. Two critical alerts fired on healthy backups.
+
+    So: recurse into the per-job subdirectories, and read Job.*.Backup.log there.
+
+    The verdict line, exactly:
+
+      [11.09.2026 16:34:05] <01> Info     Job session '<guid>' has been
+      completed, status: 'Success', '446.1 GB' of '446.1 GB' bytes, ...
+
+    Anchored on "Job session" on purpose. The same file also carries
+    "Task session '<guid>' has been completed, status: '...'" -- that is the
+    per-object result, and on a multi-object job it is not the job's verdict.
+
     Read-only. Parses Veeam's own job logs; touches nothing else.
 #>
 
 [CmdletBinding()]
 param(
-    [string] $LogDir     = 'C:\ProgramData\Veeam\Endpoint',
-    [string] $OutFile    = 'C:\ProgramData\windows_exporter\textfile_inputs\veeam.prom',
-    [int]    $LookbackHours = 48
+    [string] $LogDir  = 'C:\ProgramData\Veeam\Endpoint',
+    [string] $OutFile = 'C:\ProgramData\windows_exporter\textfile_inputs\veeam.prom'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,48 +56,69 @@ $collectorOk = 1
 
 function Add-Metric { param($Text) $lines.Add($Text) | Out-Null }
 
+# Log stamps are local time in the host's own format: [11.09.2026 16:34:05].
+# InvariantCulture, not $null: with the current culture, ':' in the format
+# string is the *time separator placeholder*, so a host configured with a
+# different separator would silently fail to parse and report timestamp 0 --
+# which reads as "backup is 56 years stale".
+$epoch = [datetime]::new(1970, 1, 1, 0, 0, 0, [System.DateTimeKind]::Utc)
+function ConvertTo-UnixTime {
+    param([string] $Stamp)
+    try {
+        $dt = [datetime]::ParseExact($Stamp, 'dd.MM.yyyy HH:mm:ss',
+                                     [System.Globalization.CultureInfo]::InvariantCulture)
+        return [int]($dt.ToUniversalTime() - $epoch).TotalSeconds
+    } catch { return 0 }
+}
+
 try {
     if (-not (Test-Path $LogDir)) { throw "log directory not found: $LogDir" }
 
-    # One file per job, newest generation without a numeric suffix.
-    $jobLogs = Get-ChildItem -Path $LogDir -Filter 'Job.*.log' -File -ErrorAction SilentlyContinue |
+    # Per-job subdirectories hold the real session logs. Rotated generations
+    # carry a numeric suffix (Job.X.Backup.1.log) and are skipped: they are
+    # older by definition, and reading them would report a stale verdict as
+    # current.
+    $jobLogs = Get-ChildItem -Path $LogDir -Filter 'Job.*.Backup.log' -File -Recurse -ErrorAction SilentlyContinue |
                Where-Object { $_.Name -notmatch '\.\d+\.log$' }
 
-    if (-not $jobLogs) { throw "no job logs matched in $LogDir" }
-
-    $since = (Get-Date).AddHours(-$LookbackHours)
+    if (-not $jobLogs) { throw "no session logs matched Job.*.Backup.log under $LogDir" }
 
     foreach ($log in $jobLogs) {
-        # Job.Bases_backup.Backup.log -> "Bases_backup"
-        $job = ($log.BaseName -split '\.')[1]
-        if (-not $job) { $job = $log.BaseName }
+        $content = Get-Content -Path $log.FullName -ErrorAction Stop -Tail 8000
 
-        $content = Get-Content -Path $log.FullName -ErrorAction Stop -Tail 4000
+        # Veeam's own name for the job ("Bases backup"), which is not the
+        # directory name ("Bases_backup"). Fall back to the directory when the
+        # stop line is not in the retained tail.
+        $job = $log.Directory.Name
+        $named = $content | Select-String -Pattern "Job has been stopped successfully\. Name: \[([^\]]+)\]" |
+                 Select-Object -Last 1
+        if ($named) { $job = $named.Matches[0].Groups[1].Value }
 
-        # The job's own verdict. Veeam writes a summary line per run; take the last.
-        $finished = $content | Select-String -Pattern 'Job (finished|session) .*(Success|Failed|Warning)' |
-                    Select-Object -Last 1
-        $result = 2   # 0 success, 1 warning, 2 failed/unknown -- unknown is NOT success
-        if ($finished) {
-            if ($finished.Line -match 'Success') { $result = 0 }
-            elseif ($finished.Line -match 'Warning') { $result = 1 }
-            else { $result = 2 }
-        }
+        $verdict = $content |
+                   Select-String -Pattern "Job session '[^']+' has been completed, status: '([^']+)'" |
+                   Select-Object -Last 1
 
-        # When did it last finish? Veeam timestamps lines as [dd.MM.yyyy HH:mm:ss].
+        # 0 success, 1 warning, 2 failed or unknown. Unknown is deliberately not
+        # success: a collector that cannot find a verdict has not established
+        # that the backup worked.
+        $result = 2
         $lastTs = 0
-        if ($finished -and $finished.Line -match '\[(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}:\d{2})') {
-            try {
-                $dt = [datetime]::ParseExact($matches[1], 'dd.MM.yyyy HH:mm:ss', $null)
-                $lastTs = [int][double]::Parse((Get-Date $dt -UFormat %s))
-            } catch { }
+        if ($verdict) {
+            switch -Regex ($verdict.Matches[0].Groups[1].Value) {
+                '^Success' { $result = 0 }
+                '^Warning' { $result = 1 }
+                default    { $result = 2 }
+            }
+            if ($verdict.Line -match '^\[(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}:\d{2})\]') {
+                $lastTs = ConvertTo-UnixTime $matches[1]
+            }
         }
 
         # The part a status check cannot see: encryption key and metadata errors,
         # logged while the job still declares success.
         $keyErrors = ($content | Select-String -Pattern 'archive recovery key .* is missing|Unable to decrypt archive key|Backup metadata is in inconsistent state').Count
 
-        $j = $job -replace '"','\"'
+        $j = $job -replace '"', '\"'
         Add-Metric "veeam_job_last_result{job=`"$j`"} $result"
         Add-Metric "veeam_job_last_finish_timestamp_seconds{job=`"$j`"} $lastTs"
         Add-Metric "veeam_job_key_errors{job=`"$j`"} $keyErrors"
