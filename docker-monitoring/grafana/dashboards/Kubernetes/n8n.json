@@ -87,7 +87,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "n8n_active_workflow_count",
+          "expr": "max(n8n_active_workflow_count)",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -101,6 +101,7 @@
         "type": "prometheus",
         "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
       },
+      "description": "Суммарно по всем подам: при перезапуске n8n метрика начинается заново, и без суммирования панель показала бы два числа.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -151,7 +152,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "increase(n8n_workflow_started_total[24h])",
+          "expr": "sum(increase(n8n_workflow_started_total[24h]))",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -219,7 +220,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "increase(n8n_workflow_failed_total[24h]) or vector(0)",
+          "expr": "sum(increase(n8n_workflow_failed_total[24h])) or vector(0)",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -348,7 +349,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "n8n_nodejs_eventloop_lag_p99_seconds",
+          "expr": "max(n8n_nodejs_eventloop_lag_p99_seconds)",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -412,7 +413,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "time() - n8n_last_activity",
+          "expr": "time() - max(n8n_last_activity)",
           "instant": true,
           "range": false,
           "refId": "A"
@@ -504,7 +505,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "rate(n8n_workflow_started_total[5m]) * 60",
+          "expr": "sum(rate(n8n_workflow_started_total[5m])) * 60",
           "instant": false,
           "legendFormat": "запущено",
           "range": true,
@@ -516,7 +517,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "rate(n8n_workflow_success_total[5m]) * 60",
+          "expr": "sum(rate(n8n_workflow_success_total[5m])) * 60",
           "instant": false,
           "legendFormat": "успешно",
           "range": true,
@@ -528,7 +529,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "rate(n8n_workflow_failed_total[5m]) * 60",
+          "expr": "sum(rate(n8n_workflow_failed_total[5m])) * 60",
           "instant": false,
           "legendFormat": "неуспешно",
           "range": true,
@@ -540,7 +541,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "rate(n8n_workflow_cancelled_total[5m]) * 60",
+          "expr": "sum(rate(n8n_workflow_cancelled_total[5m])) * 60",
           "instant": false,
           "legendFormat": "отменено",
           "range": true,
@@ -722,7 +723,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "rate(n8n_node_started_total[5m]) * 60",
+          "expr": "sum(rate(n8n_node_started_total[5m])) * 60",
           "instant": false,
           "legendFormat": "начато",
           "range": true,
@@ -734,7 +735,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "rate(n8n_node_finished_total[5m]) * 60",
+          "expr": "sum(rate(n8n_node_finished_total[5m])) * 60",
           "instant": false,
           "legendFormat": "завершено",
           "range": true,
@@ -906,7 +907,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "n8n_nodejs_eventloop_lag_mean_seconds",
+          "expr": "max(n8n_nodejs_eventloop_lag_mean_seconds)",
           "instant": false,
           "legendFormat": "среднее",
           "range": true,
@@ -918,7 +919,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "n8n_nodejs_eventloop_lag_p90_seconds",
+          "expr": "max(n8n_nodejs_eventloop_lag_p90_seconds)",
           "instant": false,
           "legendFormat": "p90",
           "range": true,
@@ -930,7 +931,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "n8n_nodejs_eventloop_lag_p99_seconds",
+          "expr": "max(n8n_nodejs_eventloop_lag_p99_seconds)",
           "instant": false,
           "legendFormat": "p99",
           "range": true,
@@ -942,7 +943,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "n8n_nodejs_eventloop_lag_max_seconds",
+          "expr": "max(n8n_nodejs_eventloop_lag_max_seconds)",
           "instant": false,
           "legendFormat": "максимум",
           "range": true,
@@ -1022,7 +1023,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "n8n_nodejs_heap_size_used_bytes",
+          "expr": "max(n8n_nodejs_heap_size_used_bytes)",
           "instant": false,
           "legendFormat": "heap использовано",
           "range": true,
@@ -1034,7 +1035,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "n8n_nodejs_heap_size_total_bytes",
+          "expr": "max(n8n_nodejs_heap_size_total_bytes)",
           "instant": false,
           "legendFormat": "heap выделено",
           "range": true,
@@ -1046,7 +1047,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "n8n_process_resident_memory_bytes",
+          "expr": "max(n8n_process_resident_memory_bytes)",
           "instant": false,
           "legendFormat": "RSS процесса",
           "range": true,
@@ -1137,7 +1138,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "rate(n8n_process_cpu_seconds_total[5m])",
+          "expr": "sum(rate(n8n_process_cpu_seconds_total[5m]))",
           "instant": false,
           "legendFormat": "ядер",
           "range": true,
@@ -1216,7 +1217,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "n8n_process_open_fds",
+          "expr": "max(n8n_process_open_fds)",
           "instant": false,
           "legendFormat": "открыто",
           "range": true,
@@ -1228,7 +1229,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "n8n_process_max_fds",
+          "expr": "max(n8n_process_max_fds)",
           "instant": false,
           "legendFormat": "предел",
           "range": true,
@@ -1307,7 +1308,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "rate(n8n_cache_hits_total[5m]) * 60",
+          "expr": "sum(rate(n8n_cache_hits_total[5m])) * 60",
           "instant": false,
           "legendFormat": "попаданий",
           "range": true,
@@ -1319,7 +1320,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "rate(n8n_cache_misses_total[5m]) * 60",
+          "expr": "sum(rate(n8n_cache_misses_total[5m])) * 60",
           "instant": false,
           "legendFormat": "промахов",
           "range": true,
