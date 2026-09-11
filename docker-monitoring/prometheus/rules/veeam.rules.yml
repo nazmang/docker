@@ -57,6 +57,36 @@ groups:
       summary: "Veeam {{ $labels.job_name }}: ошибки ключей шифрования при успешном задании"
       description: "В журнале {{ $value }} записей о несогласованных метаданных или недоступном ключе архива. Задание при этом отчитывается об успехе — восстановимость копий под вопросом, пока не проверена расшифровкой."
 
+  - alert: VeeamServiceNotRunning
+    # The "quiet stop" threat, watched by state rather than by audit trail --
+    # because that host records no object-access auditing at all: stopping the
+    # service or disabling the job leaves no trace anywhere. Eight principals
+    # can do it, including the 1C service account, which is why this is a
+    # monitoring problem and not only a permissions one.
+    expr: windows_service_state{name="veeamendpointbackupsvc",state="running"} == 0
+    for: 15m
+    labels:
+      severity: critical
+      category: backup
+      team: platform
+    annotations:
+      summary: "Служба Veeam Agent не запущена"
+      description: "VeeamEndpointBackupSvc не в состоянии running. Пока она остановлена, резервное копирование не выполняется и об этом ничто больше не сообщит."
+
+  - alert: VeeamServiceNotAutomatic
+    # A service left on Manual survives until the next reboot and then never
+    # comes back. The job simply stops running, quietly, exactly like the case
+    # above but delayed by however long the machine stays up.
+    expr: windows_service_start_mode{name="veeamendpointbackupsvc",start_mode="auto"} == 0
+    for: 1h
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Служба Veeam Agent не в автозапуске"
+      description: "Тип запуска отличается от автоматического — после следующей перезагрузки резервное копирование не возобновится."
+
   - alert: VeeamCollectorDown
     # The collector reports its own failure rather than going quiet, because a
     # collector that dies silently leaves every rule above evaluating nothing
