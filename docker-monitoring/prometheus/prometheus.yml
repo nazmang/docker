@@ -111,23 +111,30 @@ scrape_configs:
     static_configs:
       - targets: ["swarmexporter:9107"]
 
-  # The remote PostgreSQL 14 on psvc.duckdns.org (a Windows host), scraped over
-  # the internet. It looked like it kept going down -- 96.2% scrape success
-  # over 24 hours, and Uptime Kuma's "Knex: Timeout" alerts about the same host
-  # -- but it was never down. The scrape itself takes 28 seconds and peaked at
-  # exactly 40, the timeout, so Prometheus gave up and recorded up=0.
+  # The remote PostgreSQL 14 on psvc.duckdns.org (a Windows host, and a domain
+  # controller, in another datacentre 34.6 ms away).
   #
-  # The cost is in one collector: `database` alone accounts for 21.5 of those
-  # 28 seconds, because pg_database_size() walks the data directory for each of
-  # seven databases and the largest is 10.3 GB on Windows. The other collectors
-  # take ~3s each, which is itself a sign of how far away this server is.
+  # History worth keeping, because it explains a class of alert nobody could
+  # account for. This target used to look like it went down for about an hour a
+  # day -- 96.2% scrape success, and Uptime Kuma alerting "Knex: Timeout" about
+  # the same host. The database was never down. The scrape took 28 seconds and
+  # peaked at exactly its 40-second timeout, so Prometheus recorded up=0.
   #
-  # Two minutes with a 60s ceiling: database sizes change slowly enough that
-  # nothing is lost at that resolution, and the timeout now has real headroom
-  # instead of sitting a second above the measured cost.
+  # The cost was not the network: the same query run on the box itself over
+  # loopback took 22.2 seconds, against 21.5 remotely. It was Windows Defender.
+  # Real-time protection was on with an EMPTY exclusion list, so every file open
+  # in a 15 GB PostgreSQL data directory was scanned -- and pg_database_size()
+  # stat-walks every file of every database. Excluding the data directory and
+  # postgres.exe took the whole scrape from 28 seconds to 3.25, and the per-scrape
+  # "could not stat pg_wal/...deleted: Permission denied" errors (a sharing
+  # violation, not a privilege problem) stopped with it.
+  #
+  # So the interval is back to normal. Two minutes and a 60s ceiling were a
+  # workaround for a symptom; the cause is fixed, and 30s/15s leaves the timeout
+  # roughly four times the measured cost.
   - job_name: "postgres-zabbix"
-    scrape_interval: 2m
-    scrape_timeout: 60s
+    scrape_interval: 30s
+    scrape_timeout: 15s
     static_configs:
       - targets: ["zabbix_postgres-exporter:9187"]
 
