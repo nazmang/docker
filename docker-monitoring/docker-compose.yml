@@ -38,9 +38,6 @@ services:
       - source: gf_dash_k8s
         target: /etc/grafana/dashboards/Kubernetes/k8s-dashboard.json
         mode: 0444
-      - source: gf_dash_nginx
-        target: /etc/grafana/dashboards/nginx.json
-        mode: 0444
       - source: gf_dash_postgresql
         target: /etc/grafana/dashboards/postgresql-database.json
         mode: 0444
@@ -300,9 +297,6 @@ configs:
   gf_dash_k8s:
     file: ./grafana/dashboards/Kubernetes/k8s-dashboard.json
     name: gf_dash_k8s_${PROM_CONFIG_VERSION:-manual}
-  gf_dash_nginx:
-    file: ./grafana/dashboards/nginx.json
-    name: gf_dash_nginx_${PROM_CONFIG_VERSION:-manual}
   gf_dash_postgresql:
     file: ./grafana/dashboards/postgresql-database.json
     name: gf_dash_postgresql_${PROM_CONFIG_VERSION:-manual}
