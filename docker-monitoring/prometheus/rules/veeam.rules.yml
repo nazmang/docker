@@ -1,0 +1,83 @@
+###############################################################################
+# Veeam Agent on psvc.duckdns.org.
+#
+# These rules exist because of a specific failure, and they are shaped by it.
+#
+# On 2026-09-11 that host's nightly job reported Success while logging, on every
+# run for at least five days, "Backup metadata is in inconsistent state" and
+# "Unable to decrypt archive key ... archive recovery key ... is missing from
+# archive key node" -- and the Veeam UI could not see the backup chain at all,
+# although the .vbk/.vib files were on the storage box. A check that asked "did
+# the job succeed?" would have said yes throughout.
+#
+# So: three independent signals, because any one of them can look healthy while
+# the others do not. Metrics come from veeam-metrics.ps1 through
+# windows_exporter's textfile collector.
+###############################################################################
+groups:
+
+- name: veeam_backups
+  rules:
+
+  - alert: VeeamJobFailed
+    expr: veeam_job_last_result != 0
+    for: 15m
+    labels:
+      severity: critical
+      category: backup
+      team: platform
+    annotations:
+      summary: "Задание Veeam {{ $labels.job_name }} завершилось неуспешно"
+      description: "Последний запуск вернул код {{ $value }} (0 — успех, 1 — с предупреждениями, 2 — отказ либо результат не удалось определить)."
+
+  - alert: VeeamJobStale
+    # The job runs at 00:30. Twenty-six hours means one missed night is reported
+    # and not two.
+    expr: time() - veeam_job_last_finish_timestamp_seconds > 26 * 3600
+    for: 30m
+    labels:
+      severity: critical
+      category: backup
+      team: platform
+    annotations:
+      summary: "Задание Veeam {{ $labels.job_name }} не отрабатывало более суток"
+      description: "Последнее завершение — {{ $value | humanizeDuration }} назад."
+
+  - alert: VeeamEncryptionKeyErrors
+    # THE RULE THIS FILE EXISTS FOR. It fires while the job is green, because
+    # that is exactly the state that fooled everyone: data written nightly,
+    # Success reported, and key material the product itself cannot resolve.
+    expr: veeam_job_key_errors > 0
+    for: 1h
+    labels:
+      severity: critical
+      category: backup
+      team: platform
+    annotations:
+      summary: "Veeam {{ $labels.job_name }}: ошибки ключей шифрования при успешном задании"
+      description: "В журнале {{ $value }} записей о несогласованных метаданных или недоступном ключе архива. Задание при этом отчитывается об успехе — восстановимость копий под вопросом, пока не проверена расшифровкой."
+
+  - alert: VeeamCollectorDown
+    # The collector reports its own failure rather than going quiet, because a
+    # collector that dies silently leaves every rule above evaluating nothing
+    # and looking calm.
+    expr: veeam_collector_up == 0
+    for: 1h
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Сборщик метрик Veeam не смог прочитать журналы"
+      description: "Скрипт отработал, но данные собрать не удалось — смотрите veeam_collector_error_info."
+
+  - alert: VeeamMetricsMissing
+    expr: absent(veeam_collector_up)
+    for: 2h
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Метрики Veeam пропали полностью"
+      description: "Ни одной серии veeam_collector_up. Либо не выполняется запланированная задача, либо windows_exporter не читает textfile-каталог, либо недоступен сам хост."

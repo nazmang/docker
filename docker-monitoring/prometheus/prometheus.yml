@@ -14,6 +14,7 @@ rule_files:
   - "rules/jenkins.rules.yml"
   - "rules/swarm.rules.yml"
   - "rules/backup.rules.yml"
+  - "rules/veeam.rules.yml"
 
 # A scrape configuration containing exactly one endpoint to scrape.
 scrape_configs:
@@ -107,6 +108,24 @@ scrape_configs:
       - targets: ["prometheus:9090"]
 
   # Per-service replica state for the Swarm; see swarm-exporter/exporter.py.
+  # The Windows host that runs PostgreSQL 14, 1C, a domain controller and the
+  # Veeam Agent. NOT SCRAPED YET: windows_exporter has to be installed there and
+  # port 9182 opened to this address first. Left here, enabled, deliberately --
+  # when the exporter appears the target simply comes up; if it never does, the
+  # target is down and says so, which is better than a commented-out block
+  # nobody remembers.
+  #
+  # Everything about that machine was invisible to monitoring until today: CPU,
+  # disk, memory, and whether its backups are restorable.
+  - job_name: "windows-psvc"
+    scrape_interval: 60s
+    scrape_timeout: 20s
+    static_configs:
+      - targets: ["psvc.duckdns.org:9182"]
+        labels:
+          instance: "psvc"
+          role: "postgres-1c-dc"
+
   - job_name: "swarm-exporter"
     scrape_interval: 30s
     static_configs:
