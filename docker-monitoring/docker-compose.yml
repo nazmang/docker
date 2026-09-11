@@ -37,6 +37,12 @@ services:
       - source: gf_dash_postgresql
         target: /etc/grafana/dashboards/postgresql-database.json
         mode: 0444
+      - source: gf_dash_n8n
+        target: /etc/grafana/dashboards/Kubernetes/n8n.json
+        mode: 0444
+      - source: gf_dash_backups
+        target: /etc/grafana/dashboards/Backups.json
+        mode: 0444
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
@@ -293,6 +299,12 @@ configs:
   gf_dash_postgresql:
     file: ./grafana/dashboards/postgresql-database.json
     name: gf_dash_postgresql_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_n8n:
+    file: ./grafana/dashboards/Kubernetes/n8n.json
+    name: gf_dash_n8n_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_backups:
+    file: ./grafana/dashboards/Backups.json
+    name: gf_dash_backups_${PROM_CONFIG_VERSION:-manual}
 
 networks:
   monitoring_net:
