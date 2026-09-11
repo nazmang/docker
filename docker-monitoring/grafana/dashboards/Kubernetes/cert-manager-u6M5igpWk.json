@@ -1234,8 +1234,9 @@
     "list": [
       {
         "current": {
-          "text": "k8s-qa",
-          "value": "k8s-qa"
+          "selected": false,
+          "text": "prometheus-k8s",
+          "value": "f4892aa5-8faf-4389-8230-b45b64a2132f"
         },
         "hide": 0,
         "includeAll": false,
