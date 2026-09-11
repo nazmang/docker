@@ -1,0 +1,13 @@
+[Unit]
+Description=Health report for debian01 (ZFS, disks, Home Assistant)
+Documentation=file:///opt/host-health/README.md
+After=network-online.target zfs.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/host-health.sh
+# The script returns 1 when it found problems — that is a successful run that
+# reported bad news, not a failed run. Without this, systemd would mark the
+# unit failed and the next timer tick would look like a crash loop.
+SuccessExitStatus=0 1
