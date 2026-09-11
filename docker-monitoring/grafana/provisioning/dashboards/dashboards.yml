@@ -1,0 +1,27 @@
+# Dashboard provisioning for the Swarm Grafana.
+#
+# Until 2026-09-11 this service mounted nothing but its data volume: the files
+# under grafana/ in this repository were connected to nothing at all, and all
+# eight dashboards existed only inside /data/grafana on dkr02. Losing that
+# directory would have lost every dashboard, and nobody would have known which
+# ones had been there.
+#
+# allowUiUpdates is true on purpose. These dashboards are edited in the browser,
+# and a read-only provider would make that impossible -- Grafana refuses to save
+# a provisioned dashboard when it is false. The cost is that a UI edit does not
+# flow back here by itself: re-export after changing one. See README.
+apiVersion: 1
+
+providers:
+  - name: repo
+    orgId: 1
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true
+    updateIntervalSeconds: 60
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      # Subdirectories become Grafana folders, so grafana/dashboards/Docker/
+      # lands in the "Docker" folder and files at the top level land in
+      # "Dashboards". This mirrors the layout the instance already had.
+      foldersFromFilesStructure: true
