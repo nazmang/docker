@@ -15,6 +15,7 @@ rule_files:
   - "rules/swarm.rules.yml"
   - "rules/backup.rules.yml"
   - "rules/veeam.rules.yml"
+  - "rules/debian01.rules.yml"
 
 # A scrape configuration containing exactly one endpoint to scrape.
 scrape_configs:

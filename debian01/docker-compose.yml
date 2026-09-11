@@ -1,0 +1,35 @@
+version: "3.8"
+
+# Prometheus agent for debian01. See agent.yml for why this pushes rather than
+# being scraped.
+#
+# network_mode: host so it can reach node-exporter on 127.0.0.1:9100 without
+# publishing anything itself, and so the metrics carry the host's own view of
+# the network rather than a container's.
+
+services:
+  prom-agent:
+    image: prom/prometheus:v2.53.4
+    container_name: prom-agent
+    network_mode: host
+    restart: unless-stopped
+    user: "65534:65534"
+    command:
+      - "--config.file=/etc/prometheus/agent.yml"
+      - "--enable-feature=agent"
+      - "--storage.agent.path=/data"
+      # Loopback only: the agent has no UI worth reaching and nothing should
+      # depend on it being reachable.
+      - "--web.listen-address=127.0.0.1:9091"
+    volumes:
+      - ./agent.yml:/etc/prometheus/agent.yml:ro
+      - ./rw_password:/etc/prometheus/rw_password:ro
+      - agent-data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  agent-data:

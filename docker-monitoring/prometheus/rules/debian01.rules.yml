@@ -1,0 +1,121 @@
+###############################################################################
+# debian01 — домашний NAS (OpenMediaVault 7) с пулом ZFS и Home Assistant.
+#
+# Метрики приходят через remote_write от агента на самой машине: она за NAT,
+# опросить её снаружи нельзя. Из этого следует важное для правил ниже: если
+# метрики пропали, это НЕ значит, что машина цела и просто молчит — это может
+# значить что угодно, от выключенного хоста до пропавшего интернета. Поэтому
+# отсутствие данных здесь само по себе повод для тревоги, а параллельно за тем
+# же следит push-монитор Uptime Kuma по независимому пути.
+###############################################################################
+groups:
+
+- name: debian01
+  rules:
+
+  - alert: Debian01MetricsMissing
+    expr: absent(up{host="debian01"})
+    for: 20m
+    labels:
+      severity: warning
+      category: availability
+      team: platform
+    annotations:
+      summary: "debian01 перестал присылать метрики"
+      description: "Более 20 минут нет ни одной серии с host=debian01. Хост выключен, пропала связь, или остановился агент. Push-монитор в Kuma должен сказать то же самое независимо."
+
+  - alert: Debian01NodeExporterDown
+    # The agent is alive (it is pushing) but cannot scrape the host's own
+    # exporter — a different fault from the host being gone, and invisible
+    # without this rule because the push keeps arriving.
+    expr: up{host="debian01"} == 0
+    for: 15m
+    labels:
+      severity: warning
+      category: availability
+      team: platform
+    annotations:
+      summary: "debian01: агент не может опросить node-exporter"
+      description: "Метрики приходят, но локальный сбор не работает — проверьте prometheus-node-exporter на хосте."
+
+  - alert: Debian01ZfsPoolNotImported
+    # The failure this whole exercise started from: after a power cut the USB
+    # enclosure returns, the boot-time import has already failed, and the pool
+    # simply is not there. Last time that went unnoticed for five days.
+    expr: zfs_pool_imported{host="debian01"} == 0
+    for: 10m
+    labels:
+      severity: critical
+      category: storage
+      team: platform
+    annotations:
+      summary: "Пул {{ $labels.pool }} не импортирован на debian01"
+      description: "Данных на нём сейчас нет. Проверьте питание внешней коробки: импорт по появлению диска настроен, поэтому включение должно поднять пул само."
+
+  - alert: Debian01ZfsPoolUnhealthy
+    expr: zfs_pool_healthy{host="debian01"} == 0 and zfs_pool_imported{host="debian01"} == 1
+    for: 10m
+    labels:
+      severity: critical
+      category: storage
+      team: platform
+    annotations:
+      summary: "Пул {{ $labels.pool }} не в состоянии ONLINE"
+      description: "Пул импортирован, но деградировал. Это один диск без избыточности — исправлять повреждение нечем, поэтому важно узнать рано."
+
+  - alert: Debian01ZfsPoolErrors
+    expr: zfs_pool_errors{host="debian01"} > 0
+    for: 30m
+    labels:
+      severity: critical
+      category: storage
+      team: platform
+    annotations:
+      summary: "На пуле {{ $labels.pool }} {{ $value }} ошибок"
+      description: "Ошибки чтения, записи или контрольных сумм. На пуле без избыточности ZFS обнаруживает повреждение, но не восстанавливает его."
+
+  - alert: Debian01ZfsPoolFull
+    expr: zfs_pool_capacity_percent{host="debian01"} > 90
+    for: 1h
+    labels:
+      severity: warning
+      category: storage
+      team: platform
+    annotations:
+      summary: "Пул {{ $labels.pool }} заполнен на {{ $value }}%"
+      description: "ZFS заметно теряет производительность выше 90% и почти не умеет освобождать место без удаления снимков."
+
+  - alert: Debian01SmartFailure
+    expr: smart_healthy{host="debian01"} == 0
+    for: 15m
+    labels:
+      severity: critical
+      category: storage
+      team: platform
+    annotations:
+      summary: "S.M.A.R.T. на {{ $labels.device }} сообщает о проблеме"
+      description: "Диск сам заявляет о неисправности. На машине без избыточности это повод копировать данные, а не разбираться не спеша."
+
+  - alert: Debian01RootFilesystemFilling
+    # Measured at 88% the day this was written, on a 33 GB root shared with
+    # Home Assistant, which writes constantly.
+    expr: root_filesystem_used_percent{host="debian01"} > 92
+    for: 30m
+    labels:
+      severity: warning
+      category: resource
+      team: platform
+    annotations:
+      summary: "Корневая ФС debian01 заполнена на {{ $value }}%"
+      description: "Home Assistant пишет непрерывно; при переполнении корня встанут и он, и OMV."
+
+  - alert: Debian01HomeAssistantDown
+    expr: home_assistant_up{host="debian01"} == 0
+    for: 15m
+    labels:
+      severity: warning
+      category: availability
+      team: platform
+    annotations:
+      summary: "Home Assistant не отвечает"
+      description: "Порт 8123 не отдаёт ответ. Умный дом стоит: сценарии, датчики и Zigbee-устройства не обслуживаются."
