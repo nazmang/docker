@@ -97,7 +97,24 @@ try {
     $keyErrorPattern = 'archive recovery key .* is missing|Unable to decrypt archive key|Backup metadata is in inconsistent state'
 
     foreach ($log in $jobLogs) {
-        $content = Get-Content -Path $log.FullName -ErrorAction Stop -Tail 8000
+        # The whole file, not a -Tail window. Veeam rotates these itself at
+        # roughly 10 MB (the retained generations on this host are 10.5 MB each),
+        # so "whole file" is bounded, and a window is not free of consequences:
+        #
+        #   * with -Tail 8000 on a file of 8571 lines, the window began at line
+        #     572 and cut off the first occurrence of each error pattern. The
+        #     retained count read 8 where the file held 10 -- a number that
+        #     drifts as the file grows and matches nothing anyone can verify by
+        #     grepping the log;
+        #   * worse, if a single session ever exceeded the window, its
+        #     "Starting new log" header would fall outside it, the session
+        #     boundary below would silently resolve to the top of the window,
+        #     and errors from the *previous* session would be attributed to the
+        #     last one -- exactly the bug this scoping exists to prevent.
+        #
+        # Found 2026-09-11 by counting both ways on the host instead of assuming
+        # the window was wide enough.
+        $content = Get-Content -Path $log.FullName -ErrorAction Stop
 
         # One file holds several sessions end to end. Boundaries look like:
         #
@@ -162,9 +179,10 @@ try {
         # teaches people to close it without looking.
         $keyErrors = ($scope | Select-String -Pattern $keyErrorPattern).Count
 
-        # The same count across everything still in the file, for context rather
-        # than alerting: it answers "has this job ever been in trouble recently"
-        # without holding the alert on.
+        # The same count across every session still in the file, for context
+        # rather than alerting: it answers "has this job been in trouble recently"
+        # without holding the alert on. Now genuinely the whole file, which is
+        # what the name always claimed.
         $keyErrorsRetained = ($content | Select-String -Pattern $keyErrorPattern).Count
 
         # The label is job_name, NOT job. Prometheus overwrites `job` with the
@@ -194,7 +212,7 @@ $header = @(
     '# TYPE veeam_job_last_finish_timestamp_seconds gauge',
     '# HELP veeam_job_key_errors Chain-damage errors within the last completed session, regardless of its declared result.',
     '# TYPE veeam_job_key_errors gauge',
-    '# HELP veeam_job_key_errors_retained The same count across every session still in the log file. Context, not an alerting signal.',
+    '# HELP veeam_job_key_errors_retained The same count across every session in the whole log file. Context, not an alerting signal.',
     '# TYPE veeam_job_key_errors_retained gauge',
     '# HELP veeam_collector_up Whether this collector produced data.',
     '# TYPE veeam_collector_up gauge'
