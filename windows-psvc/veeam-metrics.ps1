@@ -83,26 +83,42 @@ try {
 
     if (-not $jobLogs) { throw "no session logs matched Job.*.Backup.log under $LogDir" }
 
+    # Patterns that mean the backup chain itself is damaged: the archive
+    # recovery key is gone, or the metadata does not agree with the data. These
+    # are the ones that made the chain unrestorable on 2026-09-11 while every
+    # session still declared Success.
+    #
+    # Deliberately NOT counted: "The given key was not present in the dictionary
+    # (KeyNotFoundException)" at CBackupVbmReader.RecoverKeys. It appears in
+    # every session, including ones that produce a restorable backup, so
+    # counting it would pin this metric above zero permanently and turn the
+    # alert into wallpaper. If a future incident shows it to be meaningful, it
+    # belongs in its own metric, not mixed into this one.
+    $keyErrorPattern = 'archive recovery key .* is missing|Unable to decrypt archive key|Backup metadata is in inconsistent state'
+
     foreach ($log in $jobLogs) {
         $content = Get-Content -Path $log.FullName -ErrorAction Stop -Tail 8000
 
-        # Veeam's own name for the job ("Bases backup"), which is not the
-        # directory name ("Bases_backup"). Fall back to the directory when the
-        # stop line is not in the retained tail.
-        $job = $log.Directory.Name
-        $named = $content | Select-String -Pattern "Job has been stopped successfully\. Name: \[([^\]]+)\]" |
-                 Select-Object -Last 1
-        if ($named) { $job = $named.Matches[0].Groups[1].Value }
+        # One file holds several sessions end to end. Boundaries look like:
+        #
+        #   ===================================================================
+        #   Starting new log
+        #   ...
+        #   CmdLineParams: [startbackupjob owner=[vbsvc] Normal <jobId> <sessionId>]
+        #
+        # so "Starting new log" is the anchor. Note the header lines carry no
+        # [dd.MM.yyyy] stamp at all -- only lines inside a session do.
+        $verdictPattern = "Job session '[^']+' has been completed, status: '([^']+)'"
 
-        $verdict = $content |
-                   Select-String -Pattern "Job session '[^']+' has been completed, status: '([^']+)'" |
-                   Select-Object -Last 1
+        $verdict = $content | Select-String -Pattern $verdictPattern | Select-Object -Last 1
 
         # 0 success, 1 warning, 2 failed or unknown. Unknown is deliberately not
         # success: a collector that cannot find a verdict has not established
         # that the backup worked.
         $result = 2
         $lastTs = 0
+        $scope  = $content
+
         if ($verdict) {
             switch -Regex ($verdict.Matches[0].Groups[1].Value) {
                 '^Success' { $result = 0 }
@@ -112,11 +128,44 @@ try {
             if ($verdict.Line -match '^\[(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}:\d{2})\]') {
                 $lastTs = ConvertTo-UnixTime $matches[1]
             }
+
+            # Narrow to the session that produced that verdict: from the last
+            # "Starting new log" at or before it, to the verdict itself.
+            #
+            # Anchored on the last *completed* session rather than on the newest
+            # session in the file, and that is the point: a backup here runs for
+            # about an hour, so while one is in progress the newest session has
+            # no verdict yet. Reading it would publish "failed or unknown" every
+            # night for an hour and fire a critical alert on a healthy run.
+            $vIdx = $verdict.LineNumber - 1
+            $sIdx = 0
+            for ($i = $vIdx; $i -ge 0; $i--) {
+                if ($content[$i] -match 'Starting new log') { $sIdx = $i; break }
+            }
+            $scope = $content[$sIdx..$vIdx]
         }
 
-        # The part a status check cannot see: encryption key and metadata errors,
-        # logged while the job still declares success.
-        $keyErrors = ($content | Select-String -Pattern 'archive recovery key .* is missing|Unable to decrypt archive key|Backup metadata is in inconsistent state').Count
+        # Veeam's own name for the job ("Bases backup"), which is not the
+        # directory name ("Bases_backup"). It is logged just before the verdict,
+        # so it lives inside the scoped slice. Fall back to the directory name.
+        $job = $log.Directory.Name
+        $named = $scope | Select-String -Pattern "Job has been stopped successfully\. Name: \[([^\]]+)\]" |
+                 Select-Object -Last 1
+        if ($named) { $job = $named.Matches[0].Groups[1].Value }
+
+        # The part a status check cannot see: chain damage logged while the job
+        # still declares success. Counted within the last completed session
+        # only. Counting the whole retained log instead would keep reporting a
+        # fault that has since been fixed -- on 2026-09-11 the repaired run was
+        # clean while the previous session in the same file still carried five
+        # of these, and an alert that cannot go out once the problem is solved
+        # teaches people to close it without looking.
+        $keyErrors = ($scope | Select-String -Pattern $keyErrorPattern).Count
+
+        # The same count across everything still in the file, for context rather
+        # than alerting: it answers "has this job ever been in trouble recently"
+        # without holding the alert on.
+        $keyErrorsRetained = ($content | Select-String -Pattern $keyErrorPattern).Count
 
         # The label is job_name, NOT job. Prometheus overwrites `job` with the
         # scrape job's own name unless honor_labels is set, so a metric exported
@@ -128,6 +177,7 @@ try {
         Add-Metric "veeam_job_last_result{job_name=`"$j`"} $result"
         Add-Metric "veeam_job_last_finish_timestamp_seconds{job_name=`"$j`"} $lastTs"
         Add-Metric "veeam_job_key_errors{job_name=`"$j`"} $keyErrors"
+        Add-Metric "veeam_job_key_errors_retained{job_name=`"$j`"} $keyErrorsRetained"
     }
 }
 catch {
@@ -142,8 +192,10 @@ $header = @(
     '# TYPE veeam_job_last_result gauge',
     '# HELP veeam_job_last_finish_timestamp_seconds Unix time the job last finished.',
     '# TYPE veeam_job_last_finish_timestamp_seconds gauge',
-    '# HELP veeam_job_key_errors Encryption-key and metadata errors in the retained log, regardless of declared result.',
+    '# HELP veeam_job_key_errors Chain-damage errors within the last completed session, regardless of its declared result.',
     '# TYPE veeam_job_key_errors gauge',
+    '# HELP veeam_job_key_errors_retained The same count across every session still in the log file. Context, not an alerting signal.',
+    '# TYPE veeam_job_key_errors_retained gauge',
     '# HELP veeam_collector_up Whether this collector produced data.',
     '# TYPE veeam_collector_up gauge'
 )

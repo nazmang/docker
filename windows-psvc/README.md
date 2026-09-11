@@ -40,6 +40,21 @@ physical memory, logical processor count — comes from `os` and `cpu` anyway.
 
 Check the MSI against the release's `sha256sums.txt` before running it.
 
+**Fetching the script: `raw.githubusercontent.com` serves stale content.** During
+the 2026-09-11 deployment it kept returning the previous revision even with
+`no-cache` and a cache-busting query string, which meant installing a version
+with a bug that had already been fixed and then hunting for it. Pull the current
+file through the API instead:
+
+```powershell
+$h = @{ Accept = 'application/vnd.github.raw'; 'User-Agent' = 'psvc' }
+Invoke-WebRequest -Headers $h -UseBasicParsing `
+  'https://api.github.com/repos/nazmang/docker/contents/windows-psvc/veeam-metrics.ps1' `
+  -OutFile 'C:\Scripts\veeam-metrics.ps1'
+```
+
+Then verify the SHA256 against the value from `git`, and only then run it.
+
 Then the collector on a schedule — every 15 minutes is plenty for a nightly job,
 and cheap because it only tails log files:
 
