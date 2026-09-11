@@ -79,3 +79,38 @@ The script also writes its metrics to
 `/var/lib/node_exporter/textfile/host_health.prom`, so the same checks become
 scrapeable the moment `prometheus-node-exporter` is installed with
 `--collector.textfile.directory`. Nothing needs to change in the script.
+
+## Prometheus agent
+
+The host pushes its metrics rather than being scraped — see `agent.yml` for why.
+Three things cost time when setting this up, all of them ownership and none of
+them obvious from the error at first glance:
+
+**The agent runs as 65534 (nobody).** Both the WAL volume and the password file
+must be readable by that uid, and neither is by default:
+
+```bash
+docker run --rm -v prom-agent_agent-data:/data alpine chown -R 65534:65534 /data
+docker run --rm -v "$PWD":/w alpine sh -c 'chown 65534 /w/rw_password && chmod 400 /w/rw_password'
+```
+
+Without the first, the container dies with `lock DB directory: permission
+denied`. Without the second, it starts, scrapes happily, and fails every send
+with `unable to read basic auth password` — a failure that looks like an auth
+problem and is not.
+
+**Port 9099, not the conventional 9091.** Something already listens on 9091 on
+this host, on all interfaces. The agent's listener is loopback-only and exists
+only so the process has somewhere to report its own state.
+
+**The password file must have no trailing newline.** `printf`, not `echo`.
+
+### Checking it works
+
+```bash
+docker logs prom-agent | tail                      # "Done replaying WAL" and no send errors
+curl -s localhost:9099/api/v1/targets | head -c 300  # the local scrape target
+```
+
+From the Prometheus side, `count({host="debian01"})` should return a couple of
+thousand series, and `Debian01MetricsMissing` should be gone.

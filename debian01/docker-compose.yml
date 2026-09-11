@@ -19,8 +19,10 @@ services:
       - "--enable-feature=agent"
       - "--storage.agent.path=/data"
       # Loopback only: the agent has no UI worth reaching and nothing should
-      # depend on it being reachable.
-      - "--web.listen-address=127.0.0.1:9091"
+      # depend on it being reachable. Port 9099 rather than the conventional
+      # 9091 because something already listens there on this host -- and unlike
+      # the agent, it is listening on all interfaces.
+      - "--web.listen-address=127.0.0.1:9099"
     volumes:
       - ./agent.yml:/etc/prometheus/agent.yml:ro
       - ./rw_password:/etc/prometheus/rw_password:ro
