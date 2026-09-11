@@ -118,10 +118,16 @@ try {
         # logged while the job still declares success.
         $keyErrors = ($content | Select-String -Pattern 'archive recovery key .* is missing|Unable to decrypt archive key|Backup metadata is in inconsistent state').Count
 
+        # The label is job_name, NOT job. Prometheus overwrites `job` with the
+        # scrape job's own name unless honor_labels is set, so a metric exported
+        # as job="Bases backup" arrives as job="windows-psvc": the Veeam job name
+        # is lost, and with two Veeam jobs both series would collapse into one
+        # and collide. veeam.rules.yml already renders {{ $labels.job_name }},
+        # which until now was always empty.
         $j = $job -replace '"', '\"'
-        Add-Metric "veeam_job_last_result{job=`"$j`"} $result"
-        Add-Metric "veeam_job_last_finish_timestamp_seconds{job=`"$j`"} $lastTs"
-        Add-Metric "veeam_job_key_errors{job=`"$j`"} $keyErrors"
+        Add-Metric "veeam_job_last_result{job_name=`"$j`"} $result"
+        Add-Metric "veeam_job_last_finish_timestamp_seconds{job_name=`"$j`"} $lastTs"
+        Add-Metric "veeam_job_key_errors{job_name=`"$j`"} $keyErrors"
     }
 }
 catch {
