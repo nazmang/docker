@@ -49,6 +49,41 @@ silent when it is dead, and those two silences look identical.
 - Home Assistant answering on 8123, and the container count — this host is the
   home's automation hub, and containers stopping is as much an outage as the
   NAS disappearing.
+- The state of the weekly borg backup, read from `/var/log/omv-backup.log`.
+
+### Backups are reported, not alerted on
+
+The borg section publishes four metrics and deliberately adds nothing to the
+problem list that drives Kuma and ntfy:
+
+| metric | meaning |
+|---|---|
+| `borg_metrics_up` | the log was readable and parsed |
+| `borg_backup_last_result` | 1 if the most recent *finished* run succeeded |
+| `borg_backup_last_success_timestamp_seconds` | end of the last successful run |
+| `borg_backup_last_run_timestamp_seconds` | start of the most recent run |
+
+A stale backup stays stale for days, and this script runs every five minutes —
+putting it in the problem list would mean an ntfy message every five minutes
+for a week. Prometheus decides when that becomes an alert, and Alertmanager
+groups and rate-limits it. See `docker-monitoring/prometheus/rules/debian01.rules.yml`,
+group `debian01_backups`.
+
+Two details the parser has to get right, both learned from the real log:
+
+- **Match `ERROR:` and nothing looser.** Every run, successful ones included,
+  logs `Save of MBR failed!` — `omv-backup` cannot derive the root device from
+  LVM. A `/failed/` match would mark every backup as a failure.
+- **Compare the position of the last success against the last failure**, rather
+  than reading only the newest run. A run takes about six minutes and the timer
+  fires every five, so a backup in progress would otherwise look like a failure
+  until it finished.
+
+Why this exists: on 2026-09-11 the last successful backup turned out to be
+2026-08-09. The 09-06 run had failed — it was writing into the mountpoint
+directory on the root filesystem, because the ZFS pool had not been imported —
+and cron's report went to root's mail, which nobody reads. A month with no
+backups, and nothing anywhere said so.
 
 ### Installation
 

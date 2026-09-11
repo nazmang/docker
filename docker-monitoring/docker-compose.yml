@@ -69,6 +69,21 @@ services:
       - source: prom_rules_swarm
         target: /etc/prometheus/rules/swarm.rules.yml
         mode: 0444
+      # These three were delivered by hand (docker config create + service
+      # update) and existed only in the running service, not in this file. A
+      # `docker stack deploy` would have removed them -- twenty rules, silently,
+      # with the symptom of a missing alert being silence. prometheus.yml has
+      # listed all seven rule files since they were written, so the stack was
+      # also one redeploy away from failing to load its own configuration.
+      - source: prom_rules_backup
+        target: /etc/prometheus/rules/backup.rules.yml
+        mode: 0444
+      - source: prom_rules_veeam
+        target: /etc/prometheus/rules/veeam.rules.yml
+        mode: 0444
+      - source: prom_rules_debian01
+        target: /etc/prometheus/rules/debian01.rules.yml
+        mode: 0444
     user: 65534:999
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -215,6 +230,15 @@ configs:
   prom_rules_swarm:
     file: ./prometheus/rules/swarm.rules.yml
     name: prom_rules_swarm_${PROM_CONFIG_VERSION:-manual}
+  prom_rules_backup:
+    file: ./prometheus/rules/backup.rules.yml
+    name: prom_rules_backup_${PROM_CONFIG_VERSION:-manual}
+  prom_rules_veeam:
+    file: ./prometheus/rules/veeam.rules.yml
+    name: prom_rules_veeam_${PROM_CONFIG_VERSION:-manual}
+  prom_rules_debian01:
+    file: ./prometheus/rules/debian01.rules.yml
+    name: prom_rules_debian01_${PROM_CONFIG_VERSION:-manual}
 
 networks:
   monitoring_net:

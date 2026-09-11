@@ -98,6 +98,73 @@ if command -v docker >/dev/null 2>&1; then
     fi
 fi
 
+# --- Резервные копии borg --------------------------------------------------
+# omv-backup runs weekly (Sunday 00:00, an OMV user-defined cron job calling
+# /usr/sbin/omv-backup) and writes borg archives to the pool. Nothing watched
+# it: on 2026-09-11 the last successful run turned out to be 2026-08-09, the
+# 09-06 run had failed, and root's mail -- where cron would have reported it --
+# was empty. A month without backups, invisible.
+#
+# Facts only, no entry in $problems: a stale backup stays stale for days, and
+# this script alerts on every run, which would mean an ntfy message every five
+# minutes. Prometheus owns that decision -- see debian01.rules.yml, where
+# Alertmanager groups and rate-limits it.
+BORG_LOG="${BORG_LOG:-/var/log/omv-backup.log}"
+
+# The rotated file too: rotation is monthly but backups are weekly, so for a
+# few days after a rotation the current log holds no finished run at all.
+borg_log_stream() {
+    [[ -r "${BORG_LOG}.1.gz" ]] && zcat "${BORG_LOG}.1.gz" 2>/dev/null
+    [[ -r "$BORG_LOG" ]] && cat "$BORG_LOG"
+}
+
+borg_log_ts() {  # "[2026-09-11 17:04:40+0300] [backup] ..." -> unix time
+    local line="$1" stamp
+    stamp=$(sed -n 's/^\[\([^]]*\)\].*/\1/p' <<<"$line")
+    [[ -n "$stamp" ]] && date -d "$stamp" +%s 2>/dev/null
+}
+
+borg_stream=$(borg_log_stream)
+if [[ -n "$borg_stream" ]]; then
+    add_metric "borg_metrics_up 1"
+
+    ok_line=$(grep -nF 'Backup complete.' <<<"$borg_stream" | tail -1)
+    # Anchored on "ERROR:" and nothing looser. Every single run also logs
+    # "Save of MBR failed!" -- omv-backup cannot derive the root device from
+    # LVM -- so matching /failed/ would mark every backup, including the
+    # successful ones, as a failure.
+    fail_line=$(grep -nE '\[backup\] ERROR:' <<<"$borg_stream" | tail -1)
+
+    ok_no=${ok_line%%:*};   ok_no=${ok_no:-0}
+    fail_no=${fail_line%%:*}; fail_no=${fail_no:-0}
+
+    if [[ "$ok_no" -gt 0 ]]; then
+        ok_ts=$(borg_log_ts "${ok_line#*:}")
+        [[ -n "$ok_ts" ]] && add_metric "borg_backup_last_success_timestamp_seconds $ok_ts"
+    fi
+
+    # Which outcome came last in the file decides the verdict. Comparing line
+    # numbers rather than looking only at the newest run means a backup still
+    # in progress keeps reporting the previous finished result instead of
+    # briefly looking like a failure -- a run takes ~6 minutes and this timer
+    # fires every 5.
+    if [[ "$ok_no" -gt 0 || "$fail_no" -gt 0 ]]; then
+        if [[ "$ok_no" -ge "$fail_no" ]]; then
+            add_metric "borg_backup_last_result 1"
+        else
+            add_metric "borg_backup_last_result 0"
+        fi
+    fi
+
+    start_line=$(grep -nF 'Starting backup' <<<"$borg_stream" | tail -1)
+    if [[ -n "$start_line" ]]; then
+        start_ts=$(borg_log_ts "${start_line#*:}")
+        [[ -n "$start_ts" ]] && add_metric "borg_backup_last_run_timestamp_seconds $start_ts"
+    fi
+else
+    add_metric "borg_metrics_up 0"
+fi
+
 add_metric "host_health_last_run_timestamp_seconds $(date +%s)"
 add_metric "host_health_problems ${#problems[@]}"
 

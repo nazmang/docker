@@ -119,3 +119,73 @@ groups:
     annotations:
       summary: "Home Assistant не отвечает"
       description: "Порт 8123 не отдаёт ответ. Умный дом стоит: сценарии, датчики и Zigbee-устройства не обслуживаются."
+
+###############################################################################
+# Резервные копии borg на debian01.
+#
+# omv-backup запускается еженедельно (воскресенье 00:00) и пишет архивы borg на
+# пул. До 2026-09-11 за ним не следило ничто. Обнаружилось: последняя успешная
+# копия — 9 августа, запуск 6 сентября упал, а всё это время задание считалось
+# работающим. Отчёты cron уходили в почту root, которая пуста и никем не
+# читается.
+#
+# Причина отказа тоже показательна: пул ZFS не был импортирован, и borg создал
+# новый репозиторий в каталоге точки монтирования на корневой ФС. Правила ниже
+# такой случай ловят — репозиторий на пуле перестаёт обновляться, и возраст
+# последней успешной копии растёт, независимо от того, куда именно писал borg.
+#
+# Метрики приходят из host-health.sh через textfile-коллектор node-exporter.
+###############################################################################
+
+- name: debian01_backups
+  rules:
+
+  - alert: BorgBackupFailed
+    # Прогон завершился ошибкой. Ждём 30 минут: следующий запуск раньше не
+    # случится, а дребезга здесь быть не может — метрика меняется раз в неделю.
+    expr: borg_backup_last_result{host="debian01"} == 0
+    for: 30m
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "debian01: последний запуск резервного копирования завершился ошибкой"
+      description: "omv-backup отработал с ошибкой. Подробности в /var/log/omv-backup.log; строка с ERROR: содержит причину. Сам borg пишет в stderr, который omv-backup не перехватывает — при неясной причине запускать /usr/sbin/omv-backup вручную."
+
+  - alert: BorgBackupTooOld
+    # Расписание недельное, порог 8 суток — один пропущенный запуск плюс сутки
+    # запаса. Два пропуска подряд уже означают, что восстанавливать нечего.
+    expr: time() - borg_backup_last_success_timestamp_seconds{host="debian01"} > 8 * 24 * 3600
+    for: 1h
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "debian01: резервной копии нет больше недели"
+      description: "Последняя успешная копия сделана {{ $value | humanizeDuration }} назад при недельном расписании. Пропущен как минимум один запуск."
+
+  - alert: BorgBackupVeryOld
+    expr: time() - borg_backup_last_success_timestamp_seconds{host="debian01"} > 16 * 24 * 3600
+    for: 1h
+    labels:
+      severity: critical
+      category: backup
+      team: platform
+    annotations:
+      summary: "debian01: резервной копии нет больше двух недель"
+      description: "Пропущено два запуска подряд и более. Восстанавливать конфигурацию хоста, Home Assistant и docker-стеки сейчас не из чего — на пуле лежат данные, но не система."
+
+  - alert: BorgBackupMetricsMissing
+    # Ловит то, чего не видит порог по возрасту: серия исчезла целиком, и
+    # выражение выше просто перестаёт вычисляться. Тишина неотличима от нормы.
+    expr: absent(borg_backup_last_success_timestamp_seconds{host="debian01"})
+    for: 2h
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "debian01: метрика о резервных копиях пропала"
+      description: "Нет ни одной серии borg_backup_last_success_timestamp_seconds. Либо host-health.sh не запускается, либо /var/log/omv-backup.log стал нечитаем, либо node-exporter потерял textfile-каталог."
