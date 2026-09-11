@@ -26,6 +26,15 @@ scrape_configs:
 remote_write:
   - url: https://prom.srvxapp.com/api/v1/write
     basic_auth:
+      # A dedicated account in the nginx-proxy-manager access list guarding
+      # prom.srvxapp.com -- `debian01` since 2026-09-11, not the `admin` one a
+      # person logs in with. They shared a single account until then, which
+      # meant every rotation of the human password silently stopped metrics
+      # arriving from this machine, and the only symptom would have been a gap
+      # in the graphs nobody was looking at.
+      #
+      # Placeholder on purpose: the deployed copy carries the real name, and
+      # this file is committed to a public repository.
       username: REMOTE_WRITE_USER
       password_file: /etc/prometheus/rw_password
     # A home connection drops. The queue keeps a couple of hours of samples and
