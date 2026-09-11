@@ -53,13 +53,6 @@ services:
     networks:
       - monitoring_net
       - gateway_gw_net
-      # Grafana's OpenSearch datasource pointed at opensearch.comintern.local,
-      # a name that does not resolve from here. The cluster it wants lives in
-      # this Swarm, behind opensearch-proxy, and that service is only on its own
-      # overlay -- so Grafana has to join it to reach the proxy by name. The
-      # alternative is a node IP and a published port, which breaks the moment
-      # the proxy moves.
-      - opensearch_net
     labels:
       org.label-schema.group: "monitoring"
 
@@ -307,11 +300,6 @@ networks:
     attachable: true
   gateway_gw_net:
     external: true
-  # Owned by the opensearch stack; joined, not created. It is not attachable,
-  # so an ad-hoc container cannot enter it -- only a service can.
-  opensearch_net:
-    external: true
-    name: opensearch_opensearch-net
 
 volumes:
   prometheus_data:
