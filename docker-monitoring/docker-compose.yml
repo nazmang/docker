@@ -77,6 +77,17 @@ services:
       - "--web.console.templates=/etc/prometheus/consoles"
       - "--storage.tsdb.retention.time=2d"
       - "--web.enable-lifecycle"
+      # Accept metrics pushed by remote agents. debian01 — the home NAS with the
+      # ZFS pool and Home Assistant — sits behind NAT on a home network and
+      # cannot be scraped from here; opening a port into a home network to reach
+      # it would be a worse trade than any amount of resolution. So it runs a
+      # Prometheus agent that scrapes itself and writes here instead.
+      #
+      # The endpoint this opens is /api/v1/write on the same listener that is
+      # already published as prom.srvxapp.com — and that is already behind basic
+      # auth (verified: it answers 401). No new public surface; the same door
+      # now also accepts writes from whoever holds the password.
+      - "--web.enable-remote-write-receiver"
       - "--web.external-url=https://prom.srvxapp.com"
       - "--enable-feature=memory-snapshot-on-shutdown"
     ports:
