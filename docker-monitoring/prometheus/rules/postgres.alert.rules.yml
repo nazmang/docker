@@ -77,18 +77,48 @@ groups:
 
       # === AUTOVACUUM / DEAD TUPLES ===
       - alert: PostgreSQLTableBloat
-        # Zabbix rewrites rows constantly, so dead tuples above this threshold
-        # are its normal state rather than an event. At 10m the rule fired
-        # continuously (it was firing when this was written) and taught
-        # everyone to ignore it. At 6h it means what it should: autovacuum is
-        # not keeping up.
-        expr: pg_stat_user_tables_n_dead_tup{datname!~"template.*"} > 100000
+        # A count of dead tuples means nothing without the size of the table it
+        # sits in. The threshold used to be an absolute 100000, and raising
+        # `for` to 6h did not help: it simply fired continuously anyway, because
+        # on Zabbix's history tables that number is ordinary weather.
+        #
+        # Measured on this server 2026-09-11, while the alert was firing:
+        #
+        #   table          dead      live   ratio
+        #   history        4.17M    25.2M   14.2%
+        #   history_uint   2.54M    34.9M    6.8%
+        #   history_str     114k     683k   14.3%
+        #   trends_uint     137k     970k   12.3%
+        #
+        # autovacuum is enabled, has run 34-51 times on each of these, and acts
+        # at autovacuum_vacuum_scale_factor = 0.2. Every one of them is below
+        # that, so autovacuum was correct not to intervene and nothing was
+        # wrong. The alert was reporting normal operation as a fault.
+        #
+        # So: the ratio, above the scale factor autovacuum itself uses. Staying
+        # over 25% means autovacuum has had its chance and is not keeping up --
+        # which is the only thing this alert can usefully say.
+        #
+        # The absolute floor stays, as the second half of an `and` rather than
+        # the whole test. Without it this fires on tiny high-churn tables:
+        # sessions, task_acknowledge, ha_node and token all sit at 94-100% dead
+        # on a few hundred rows, which is equally normal and equally not news.
+        expr: |
+          100 * pg_stat_user_tables_n_dead_tup{datname!~"template.*"}
+            / clamp_min(
+                pg_stat_user_tables_n_dead_tup{datname!~"template.*"}
+                + pg_stat_user_tables_n_live_tup{datname!~"template.*"}, 1) > 25
+          and
+          pg_stat_user_tables_n_dead_tup{datname!~"template.*"} > 500000
         for: 6h
         labels:
           severity: warning
         annotations:
-          summary: "High number of dead tuples on {{ $labels.cluster }} for database {{ $labels.datname }}"
-          description: "Table bloat detected. Dead tuples: {{ $value }}. Consider running VACUUM / ANALYZE."
+          # Was {{ $labels.cluster }}, a label these series do not carry, so
+          # every notification read "dead tuples on  for database zabbix" with
+          # the gap where the table name should have been.
+          summary: "Раздувание таблицы {{ $labels.schemaname }}.{{ $labels.relname }} в базе {{ $labels.datname }}"
+          description: "Мёртвых строк {{ $value | printf \"%.1f\" }}% от общего числа, и так уже 6 часов. autovacuum срабатывает при 20%, значит он не справляется. Проверьте, не держит ли долгая транзакция горизонт очистки: SELECT * FROM pg_stat_activity WHERE state <> 'idle' ORDER BY xact_start;"
 
       # === DISK / WAL ===
       - alert: PostgreSQLWALDiskUsage

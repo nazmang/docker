@@ -59,23 +59,26 @@ groups:
       summary: Jenkins extreme CPU usage
       description: Jenkins uses more than 2 CPU cores.
 
-  - alert: JenkinsHighMemoryUsage
-    expr: process_resident_memory_bytes{job="jenkins"} > 1500000000
-    for: 2m
-    labels:
-      severity: warning
-    annotations:
-      summary: Jenkins high memory usage
-      description: Jenkins memory usage above 1.5GB.
-
-  - alert: JenkinsExtremeMemoryUsage
-    expr: process_resident_memory_bytes{job="jenkins"} > 2500000000
-    for: 2m
-    labels:
-      severity: critical
-    annotations:
-      summary: Jenkins extreme memory usage
-      description: Jenkins memory usage above 2.5GB.
+  # JenkinsHighMemoryUsage and JenkinsExtremeMemoryUsage lived here and were
+  # deleted on 2026-09-11. They tested process_resident_memory_bytes against
+  # 1.5 GB and 2.5 GB -- thresholds carried over unchanged from the cAdvisor
+  # container_memory_* versions when those stopped working (see the note at the
+  # top of this file). The number made some sense against a container limit; it
+  # makes none against the RSS of a JVM.
+  #
+  # Measured while the 1.5 GB rule was firing:
+  #
+  #   RSS 1.75 GB, heap used 0.81 GB of 2.15 GB max -- 38% of heap.
+  #
+  # A JVM with a 2.15 GB max heap cannot run below 1.5 GB RSS: committed heap
+  # plus metaspace, code cache, thread stacks and native buffers put the floor
+  # above it. The rule was structurally incapable of not firing, and the 2.5 GB
+  # one would have fired whenever the heap legitimately filled.
+  #
+  # Nothing is lost by deleting them: JenkinsHeapUsageHigh and
+  # JenkinsHeapUsageCritical below already watch memory the way that predicts
+  # trouble -- used against max -- and JenkinsHighGCPressure catches the JVM
+  # thrashing before it runs out. Do not reintroduce an RSS threshold here.
 
   - alert: JenkinsTooManyOpenFiles
     expr: process_open_fds > 4000
