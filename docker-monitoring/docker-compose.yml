@@ -25,11 +25,8 @@ services:
       - source: gf_dash_monitor_services
         target: /etc/grafana/dashboards/Docker/monitor-services.json
         mode: 0444
-      - source: gf_dash_certmanager_a
-        target: /etc/grafana/dashboards/Kubernetes/cert-manager-TvuRo2iMk.json
-        mode: 0444
-      - source: gf_dash_certmanager_b
-        target: /etc/grafana/dashboards/Kubernetes/cert-manager-u6M5igpWk.json
+      - source: gf_dash_certmanager
+        target: /etc/grafana/dashboards/Kubernetes/cert-manager.json
         mode: 0444
       - source: gf_dash_k8s
         target: /etc/grafana/dashboards/Kubernetes/k8s-dashboard.json
@@ -56,6 +53,13 @@ services:
     networks:
       - monitoring_net
       - gateway_gw_net
+      # Grafana's OpenSearch datasource pointed at opensearch.comintern.local,
+      # a name that does not resolve from here. The cluster it wants lives in
+      # this Swarm, behind opensearch-proxy, and that service is only on its own
+      # overlay -- so Grafana has to join it to reach the proxy by name. The
+      # alternative is a node IP and a published port, which breaks the moment
+      # the proxy moves.
+      - opensearch_net
     labels:
       org.label-schema.group: "monitoring"
 
@@ -284,12 +288,9 @@ configs:
   gf_dash_monitor_services:
     file: ./grafana/dashboards/Docker/monitor-services.json
     name: gf_dash_monitor_services_${PROM_CONFIG_VERSION:-manual}
-  gf_dash_certmanager_a:
-    file: ./grafana/dashboards/Kubernetes/cert-manager-TvuRo2iMk.json
-    name: gf_dash_certmanager_a_${PROM_CONFIG_VERSION:-manual}
-  gf_dash_certmanager_b:
-    file: ./grafana/dashboards/Kubernetes/cert-manager-u6M5igpWk.json
-    name: gf_dash_certmanager_b_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_certmanager:
+    file: ./grafana/dashboards/Kubernetes/cert-manager.json
+    name: gf_dash_certmanager_${PROM_CONFIG_VERSION:-manual}
   gf_dash_k8s:
     file: ./grafana/dashboards/Kubernetes/k8s-dashboard.json
     name: gf_dash_k8s_${PROM_CONFIG_VERSION:-manual}
@@ -306,6 +307,11 @@ networks:
     attachable: true
   gateway_gw_net:
     external: true
+  # Owned by the opensearch stack; joined, not created. It is not attachable,
+  # so an ad-hoc container cannot enter it -- only a service can.
+  opensearch_net:
+    external: true
+    name: opensearch_opensearch-net
 
 volumes:
   prometheus_data:
