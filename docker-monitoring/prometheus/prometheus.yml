@@ -111,9 +111,23 @@ scrape_configs:
     static_configs:
       - targets: ["swarmexporter:9107"]
 
+  # The remote PostgreSQL 14 on psvc.duckdns.org (a Windows host), scraped over
+  # the internet. It looked like it kept going down -- 96.2% scrape success
+  # over 24 hours, and Uptime Kuma's "Knex: Timeout" alerts about the same host
+  # -- but it was never down. The scrape itself takes 28 seconds and peaked at
+  # exactly 40, the timeout, so Prometheus gave up and recorded up=0.
+  #
+  # The cost is in one collector: `database` alone accounts for 21.5 of those
+  # 28 seconds, because pg_database_size() walks the data directory for each of
+  # seven databases and the largest is 10.3 GB on Windows. The other collectors
+  # take ~3s each, which is itself a sign of how far away this server is.
+  #
+  # Two minutes with a 60s ceiling: database sizes change slowly enough that
+  # nothing is lost at that resolution, and the timeout now has real headroom
+  # instead of sitting a second above the measured cost.
   - job_name: "postgres-zabbix"
-    scrape_interval: 45s
-    scrape_timeout: 40s
+    scrape_interval: 2m
+    scrape_timeout: 60s
     static_configs:
       - targets: ["zabbix_postgres-exporter:9187"]
 
