@@ -115,8 +115,14 @@ SET "RESULT=0"
 echo Backup, compression, and encryption completed successfully: %ENCRYPTED_BACKUPFILE% (%ENCSIZE% bytes) %DATE% %TIME% >> "%LOGFILE%"
 echo %DATE% %TIME% OK %ENCRYPTED_BACKUPFILE% %ENCSIZE% bytes >> "%LOCALLOG%"
 
-REM Retention: 10 days of encrypted archives
-forfiles -p "%BACKUPDIR%" -s -m *.zip.gpg -d -10 -c "cmd /c del @path" >nul 2>&1 <nul
+REM Retention, per database (each run cleans only its own archives):
+REM   zabbix -> keep the 2 newest (weekly backup)
+REM   others -> keep 10 days
+IF /I "%PGDATABASE%"=="zabbix" (
+    powershell -NoProfile -NonInteractive -Command "Get-ChildItem -LiteralPath '%BACKUPDIR%' -Filter 'zabbix_backup_*.zip.gpg' | Sort-Object LastWriteTime -Descending | Select-Object -Skip 2 | Remove-Item -Force" >> "%LOCALLOG%" 2>&1 <nul
+) ELSE (
+    forfiles -p "%BACKUPDIR%" -s -m %PGDATABASE%_backup_*.zip.gpg -d -10 -c "cmd /c del @path" >nul 2>&1 <nul
+)
 
 :done
 IF NOT "%ERRMSG%"=="" (

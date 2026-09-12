@@ -66,10 +66,15 @@ groups:
           summary: "База {{ $labels.database }} не бэкапилась ни разу"
           description: "С момента запуска наблюдения ни один прогон для этой базы не завершился успешно. Отката не существует."
 
+      # Пороги разделены по циклу: flying_system и parkt_service идут каждую
+      # ночь, zabbix -- раз в неделю, по воскресеньям в 04:00 по времени psvc.
+      # Один порог на всех означал бы либо постоянное срабатывание на недельной
+      # задаче, либо потерю суток на суточных. Поэтому zabbix исключён здесь и
+      # имеет собственные правила ниже.
       - alert: PgDumpBackupTooOld
         expr: |
-          pgdump_backup_last_success_timestamp_seconds > 0
-          and time() - pgdump_backup_last_success_timestamp_seconds > 26 * 3600
+          pgdump_backup_last_success_timestamp_seconds{database!="zabbix"} > 0
+          and time() - pgdump_backup_last_success_timestamp_seconds{database!="zabbix"} > 26 * 3600
         for: 30m
         labels:
           severity: warning
@@ -79,14 +84,40 @@ groups:
 
       - alert: PgDumpBackupVeryOld
         expr: |
-          pgdump_backup_last_success_timestamp_seconds > 0
-          and time() - pgdump_backup_last_success_timestamp_seconds > 50 * 3600
+          pgdump_backup_last_success_timestamp_seconds{database!="zabbix"} > 0
+          and time() - pgdump_backup_last_success_timestamp_seconds{database!="zabbix"} > 50 * 3600
         for: 30m
         labels:
           severity: critical
         annotations:
           summary: "Успешного дампа базы {{ $labels.database }} нет двое суток"
           description: "Последний успешный прогон был {{ $value | humanizeDuration }} назад. Пропущено минимум два запуска подряд."
+
+      # Недельный цикл: воскресенье 04:00 по времени psvc, это 05:00 по времени
+      # Zabbix. Восемь суток -- один пропущенный запуск плюс сутки на то, чтобы
+      # он мог задержаться: задача идёт после двух ночных, и наложение
+      # длинного дампа на них сдвинуло бы её.
+      - alert: PgDumpZabbixBackupTooOld
+        expr: |
+          pgdump_backup_last_success_timestamp_seconds{database="zabbix"} > 0
+          and time() - pgdump_backup_last_success_timestamp_seconds{database="zabbix"} > 8 * 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Еженедельный дамп конфигурации Zabbix не проходил больше восьми суток"
+          description: "Последний успешный прогон был {{ $value | humanizeDuration }} назад. Задача идёт по воскресеньям в 04:00 по времени psvc; проверьте Get-ScheduledTaskInfo -TaskPath '\\Postgres\\'."
+
+      - alert: PgDumpZabbixBackupVeryOld
+        expr: |
+          pgdump_backup_last_success_timestamp_seconds{database="zabbix"} > 0
+          and time() - pgdump_backup_last_success_timestamp_seconds{database="zabbix"} > 15 * 86400
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Дампа конфигурации Zabbix нет больше двух недель"
+          description: "Пропущено минимум два запуска подряд. Хранится всего две копии, так что при следующей успешной выгрузке старая уйдёт -- глубина отката сокращается."
 
       # Исчезнувшая серия не срабатывает ни по одному из порогов выше, поэтому
       # отсутствие метрик -- отдельное событие. Ровно тем же заканчивается
