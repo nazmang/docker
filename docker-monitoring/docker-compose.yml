@@ -120,6 +120,8 @@ services:
         mode: 0444
       - source: prom_rules_veeam
         target: /etc/prometheus/rules/veeam.rules.yml
+      - source: prom_rules_pgdump
+        target: /etc/prometheus/rules/pgdump.rules.yml
         mode: 0444
       - source: prom_rules_debian01
         target: /etc/prometheus/rules/debian01.rules.yml
@@ -279,6 +281,9 @@ configs:
   prom_rules_veeam:
     file: ./prometheus/rules/veeam.rules.yml
     name: prom_rules_veeam_${PROM_CONFIG_VERSION:-manual}
+  prom_rules_pgdump:
+    file: ./prometheus/rules/pgdump.rules.yml
+    name: prom_rules_pgdump_${PROM_CONFIG_VERSION:-manual}
   prom_rules_debian01:
     file: ./prometheus/rules/debian01.rules.yml
     name: prom_rules_debian01_${PROM_CONFIG_VERSION:-manual}

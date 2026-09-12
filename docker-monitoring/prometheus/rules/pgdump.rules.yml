@@ -1,0 +1,101 @@
+# Ночные дампы PostgreSQL с psvc на Hetzner Storage Box.
+#
+# Эти правила появились 12.09.2026, после того как выяснилось, что все архивы
+# flying_system и parkt_service за последние десять дней -- за всю глубину
+# хранения -- весят по 264 байта. Это зашифрованный пустой zip. pg_dump был от
+# версии 13, база на 14, он падал на несовпадении версий, а скрипт проверял
+# только существование файла и писал "completed successfully".
+#
+# Десять дней отката не существовало, и никто этого не знал, потому что за
+# дампами не следило ничего. Veeam и borg наблюдались, эти -- нет.
+#
+# Метрики публикует windows-psvc/pgdump-metrics.ps1 через textfile-коллектор
+# windows_exporter. Продюсер и консьюмер лежат в одном репозитории намеренно:
+# разнесённые по разным, они рано или поздно разъезжаются.
+groups:
+  - name: pgdump_backups
+    rules:
+
+      # Главное правило этого файла. Именно его не хватало.
+      #
+      # Порог грубый нарочно: пустой архив весит 264 байта, настоящий --
+      # сотню мегабайт. Между ними три порядка, так что мегабайт не даст
+      # ложных срабатываний даже на маленькой базе, но поймает и пустой файл,
+      # и обрезанный.
+      - alert: PgDumpBackupSuspiciouslySmall
+        # Только когда прогон ОБЪЯВИЛ себя успешным. Упавший прогон тоже
+        # оставляет нулевой размер, и без этой оговорки одно событие
+        # порождало бы два уведомления -- это же правило и PgDumpBackupFailed.
+        # А смысл здесь ровно противоположный: поймать прогон, который
+        # отчитался об успехе и при этом ничего не сохранил. Именно так и
+        # прошли десять дней.
+        expr: |
+          pgdump_backup_last_archive_bytes < 1048576
+          and on(database) pgdump_backup_last_result == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Архив базы {{ $labels.database }} подозрительно мал"
+          description: "Последний архив весит {{ $value | humanize1024 }}B. Пустой зашифрованный zip -- это 264 байта. Проверьте C:\\pg_dump\\logs\\{{ $labels.database }}.log: скорее всего pg_dump завершился с ошибкой, а скрипт счёл файл успехом."
+
+      - alert: PgDumpBackupFailed
+        expr: pgdump_backup_last_result > 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Дамп базы {{ $labels.database }} завершился с ошибкой"
+          description: "Код возврата {{ $value }}. Полный вывод pg_dump и gpg -- в C:\\pg_dump\\logs\\{{ $labels.database }}.log на psvc."
+
+      # Задачи идут ежедневно, в 02:00 и 03:00 по времени psvc. 26 часов дают
+      # запас на сдвиг расписания и на долгий прогон, но ловят один
+      # пропущенный день.
+      #
+      # Считаем от последнего УСПЕХА, а не от последнего запуска: ежедневно
+      # падающая задача выглядит свежей, она же честно запускается.
+      # Отметка 0 означает "успеха не было ни разу", а не "успех был в 1970".
+      # Без этой оговорки правило ниже сообщало бы "последний успешный прогон
+      # был 56 лет назад" -- ровно та же ошибка, что уже случалась в borg.
+      - alert: PgDumpBackupNeverSucceeded
+        expr: pgdump_backup_last_success_timestamp_seconds == 0
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: "База {{ $labels.database }} не бэкапилась ни разу"
+          description: "С момента запуска наблюдения ни один прогон для этой базы не завершился успешно. Отката не существует."
+
+      - alert: PgDumpBackupTooOld
+        expr: |
+          pgdump_backup_last_success_timestamp_seconds > 0
+          and time() - pgdump_backup_last_success_timestamp_seconds > 26 * 3600
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Успешного дампа базы {{ $labels.database }} нет больше суток"
+          description: "Последний успешный прогон был {{ $value | humanizeDuration }} назад. Задачи идут ежедневно в 02:00 и 03:00 по времени psvc; проверьте Get-ScheduledTaskInfo -TaskPath '\\Postgres\\'."
+
+      - alert: PgDumpBackupVeryOld
+        expr: |
+          pgdump_backup_last_success_timestamp_seconds > 0
+          and time() - pgdump_backup_last_success_timestamp_seconds > 50 * 3600
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Успешного дампа базы {{ $labels.database }} нет двое суток"
+          description: "Последний успешный прогон был {{ $value | humanizeDuration }} назад. Пропущено минимум два запуска подряд."
+
+      # Исчезнувшая серия не срабатывает ни по одному из порогов выше, поэтому
+      # отсутствие метрик -- отдельное событие. Ровно тем же заканчивается
+      # остановленный windows_exporter и снесённый маркер.
+      - alert: PgDumpMetricsMissing
+        expr: absent(pgdump_collector_up) or pgdump_collector_up == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Метрики дампов PostgreSQL не поступают"
+          description: "Коллектор pgdump-metrics.ps1 на psvc не выдаёт данных. Пока это так, о состоянии бэкапов неизвестно ничего -- отсутствие тревог ничего не значит."
