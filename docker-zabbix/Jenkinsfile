@@ -44,7 +44,16 @@ pipeline {
                     PGUSER=${params.POSTGRES_USER}
                     PGHOST=${params.POSTGRES_HOST}
                     PGPORT=5432
-                    DATA_SOURCE_URI=${params.POSTGRES_HOST}?sslmode=disable
+                    // Имя базы здесь обязательно. Без него postgres_exporter
+                    // идёт в базу postgres, а pg_hba.conf на сервере пускает
+                    // пользователя zabbix только в базу zabbix -- и каждый
+                    // старт контейнера оставлял в логе сервера FATAL
+                    // "no pg_hba.conf entry", а часть метрик не собиралась
+                    // вовсе. Нашлось 2026-09-12 при разборе логов на psvc.
+                    // Общекластерные представления (pg_stat_database,
+                    // pg_stat_activity) видны из любой базы, так что подключение
+                    // именно к zabbix ничего не ограничивает.
+                    DATA_SOURCE_URI=${params.POSTGRES_HOST}:5432/${params.POSTGRES_DB}?sslmode=disable
                     """
                     writeFile file: "${composeDir}/start.env", text: startEnv
                 }
