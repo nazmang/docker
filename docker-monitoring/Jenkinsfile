@@ -80,7 +80,11 @@ pipeline {
                     PROM_CONFIG_VERSION=${configVersion}
                     """
                     // echo "Generated .env content:\n${envContent}"
-                    writeFile file: "${composeDir}/.env", text: envContent
+                    // stripIndent(), потому что треугольные кавычки Groovy
+                    // сохраняют отступы, а .env с отступами ломается при
+                    // разборе -- см. комментарий в Makefile о том, как из-за
+                    // этого пропадал PROM_CONFIG_VERSION.
+                    writeFile file: "${composeDir}/.env", text: envContent.stripIndent()
                 }
             }
         }

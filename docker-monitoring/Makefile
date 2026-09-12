@@ -17,7 +17,20 @@ deploy-service:
 ifndef SERVICE
 	$(error SERVICE is not defined. Usage: make deploy-service SERVICE=servicename)
 endif
-	@export $(shell grep -v '^#' .env | xargs) && \
+# Отступы и пустые строки убираются до разбора, а не после. Здесь стояло
+# `grep -v '^#'`, и оно не снимало строки, начинающиеся с ПРОБЕЛОВ и решётки --
+# а .env генерируется Jenkins'ом из строки Groovy с отступами, то есть именно
+# такие там и есть. Дальше xargs склеивает всё в одну строку, и решётка
+# посреди неё становится началом комментария оболочки: всё, что правее,
+# пропадает молча. Так исчезали GRAFANA_TAG, PROM_TAG и, главное,
+# PROM_CONFIG_VERSION.
+#
+# Последствие было не «ничего не развернулось», а хуже. Без PROM_CONFIG_VERSION
+# все конфиги получали имя *_manual вместо хеша коммита -- имя переставало
+# меняться вместе с содержимым. А конфиги Swarm неизменяемы, поэтому второй же
+# деплой с другим содержимым падал с "only updates to Labels are allowed", и
+# стек не обновлялся вовсе. Найдено 12.09.2026, сборка 158.
+	@export $$(sed -E 's/^[[:space:]]+//' .env | grep -vE '^(#|$$)' | xargs) && \
 	envsubst < $(COMPOSE_FILE) | docker --context $(DOCKER_CONTEXT) stack deploy -c - $(STACK_NAME)
 	@rm -f /tmp/rendered-compose.yml
 	@echo "${STACK_NAME} $(SERVICE) service deployed to context '$(DOCKER_CONTEXT)'."
