@@ -19,7 +19,15 @@ pipeline {
         GF_SECURITY_ADMIN_USER = "${params.GF_ADMIN_USER}" // Default admin user for Grafana
         GF_SECURITY_ADMIN_PASSWORD = "${params.GF_ADMIN_PASSWORD}" // Default admin password for Grafana    
         // Image tags 
-        GRAFANA_TAG="10.3.5"
+        // 13.2.1 с 11.09.2026. Здесь стояло 10.3.5, хотя обновление уже было
+        // выкачено -- то есть первый же деплой стека молча откатил бы Grafana
+        // на старую версию, и никто бы не связал это с пайплайном.
+        //
+        // Обновление тогда делалось командой docker service update, мимо
+        // пайплайна. Так и появляется расхождение: работает одно, в репозитории
+        // написано другое, и репозиторий выигрывает при следующем деплое.
+        // Версии образов задаются здесь и только здесь.
+        GRAFANA_TAG="13.2.1"
         PROM_TAG="v2.53.4"
         ALERTMGR_TAG="v0.26.0"
         NTFY_AM_TAG="1.0.1"
