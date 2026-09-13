@@ -203,3 +203,7 @@ alerting:
       static_configs:
         - targets:
             - "alertmanager:9093"
+
+  - job_name: "ecoflow"
+    static_configs:
+      - targets: ["ecoflow-exporter:2112"]

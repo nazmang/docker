@@ -262,6 +262,36 @@ services:
 #
 # Old objects stay behind once nothing references them; `docker config prune`
 # is safe to run occasionally.
+  # EcoFlow: REST API (developer AccessKey/SecretKey) -> Prometheus.
+  # В облаке намеренно: exporter ходит в облако EcoFlow (api-e.ecoflow.com),
+  # аптайм Swarm высокий и не зависит от питания дома. Авто-обнаружение всех
+  # устройств аккаунта (STREAM Ultra, RIVER 3 Plus) -- SN не задаётся.
+  # Ключи -- из Jenkins credentials через .env, в git их нет.
+  ecoflow-exporter:
+    image: tess1o/go-ecoflow-exporter:1.6.0
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - "node.role==worker"
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
+    environment:
+      - EXPORTER_TYPE=rest
+      - PROMETHEUS_ENABLED=true
+      - METRIC_PREFIX=ecoflow
+      - SCRAPING_INTERVAL=60
+      - ECOFLOW_ACCESS_KEY=${ECOFLOW_ACCESS_KEY}
+      - ECOFLOW_SECRET_KEY=${ECOFLOW_SECRET_KEY}
+    networks:
+      - monitoring_net
+    labels:
+      org.label-schema.group: "monitoring"
+
 configs:
   karma_yaml:
     file: ./karma/karma.yaml
