@@ -7,7 +7,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "refresh": "30s",
   "time": {
     "from": "now-6h",
@@ -38,10 +38,10 @@
       "type": "stat",
       "title": "Активные соединения",
       "gridPos": {
-        "h": 5,
-        "w": 8,
         "x": 0,
-        "y": 0
+        "y": 8,
+        "w": 8,
+        "h": 6
       },
       "datasource": {
         "type": "prometheus",
@@ -88,10 +88,10 @@
       "type": "timeseries",
       "title": "Скорость приёма (rx) по узлам",
       "gridPos": {
-        "h": 8,
+        "x": 0,
+        "y": 0,
         "w": 12,
-        "x": 8,
-        "y": 0
+        "h": 8
       },
       "datasource": {
         "type": "prometheus",
@@ -119,10 +119,10 @@
       "type": "timeseries",
       "title": "Скорость отдачи (tx) по узлам",
       "gridPos": {
-        "h": 8,
+        "x": 12,
+        "y": 0,
         "w": 12,
-        "x": 0,
-        "y": 5
+        "h": 8
       },
       "datasource": {
         "type": "prometheus",
@@ -150,10 +150,10 @@
       "type": "stat",
       "title": "Экономия сжатия (tx / rx)",
       "gridPos": {
-        "h": 8,
+        "x": 8,
+        "y": 8,
         "w": 8,
-        "x": 12,
-        "y": 8
+        "h": 6
       },
       "datasource": {
         "type": "prometheus",
@@ -192,10 +192,10 @@
       "type": "timeseries",
       "title": "Хэширование при сканировании (байт/с)",
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 13
+        "y": 14,
+        "w": 24,
+        "h": 8
       },
       "datasource": {
         "type": "prometheus",
@@ -219,10 +219,10 @@
       "type": "stat",
       "title": "Конфликты (накопительно)",
       "gridPos": {
-        "h": 8,
+        "x": 16,
+        "y": 8,
         "w": 8,
-        "x": 12,
-        "y": 16
+        "h": 6
       },
       "datasource": {
         "type": "prometheus",
