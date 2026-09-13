@@ -40,7 +40,7 @@ pipeline {
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
         TELEGRAM_CHAT_ID = credentials('telegramChatid')  
         // EcoFlow MQTT-режим ecoflow-exporter: логин/пароль аккаунта
-        ECOFLOW_USERNAME = credentials('ecoflowUsername')
+        ECOFLOW_EMAIL = credentials('ecoflowUsername')
         ECOFLOW_PASSWORD = credentials('ecoflowPassword')
         // Slack params
         // SLACK_URL = 'https://hooks.slack.com/services/TOKEN' // Slack webhook URL for Alertmanager
@@ -80,7 +80,7 @@ pipeline {
                     ALERTMGR_TAG=${env.ALERTMGR_TAG}
                     NTFY_AM_TAG=${env.NTFY_AM_TAG}
                     KARMA_TAG=${env.KARMA_TAG}
-                    ECOFLOW_USERNAME=${env.ECOFLOW_USERNAME}
+                    ECOFLOW_EMAIL=${env.ECOFLOW_EMAIL}
                     ECOFLOW_PASSWORD=${env.ECOFLOW_PASSWORD}
                     PROM_CONFIG_VERSION=${configVersion}
                     """
