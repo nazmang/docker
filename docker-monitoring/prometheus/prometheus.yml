@@ -197,6 +197,12 @@ scrape_configs:
 #    static_configs:
 #      - targets: ['eventlog-proxy:5000', 'eventlog:5000']
 
+  # Syncthing metrics (NAS :20910 https, debian01 :8384 http, /metrics needs the
+  # API key as Bearer) are NOT scraped from here: this Prometheus runs in the
+  # Swarm overlay and has no route into the home LANs (192.168.2/88.x) — same
+  # reason debian01's node/HA metrics arrive by remote_write from the home-side
+  # prom-agent. Add the two Syncthing scrapes to that agent instead. See
+  # journal 2026-09-13 "мониторинг Syncthing".
 
 
 alerting:

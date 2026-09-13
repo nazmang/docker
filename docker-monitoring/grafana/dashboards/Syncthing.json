@@ -1,0 +1,95 @@
+{
+  "uid": "syncthing-sync",
+  "title": "Syncthing",
+  "tags": ["syncthing", "sync"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+        "query": "label_values(syncthing_connections_active, instance)",
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Активные соединения",
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [
+        { "refId": "A", "expr": "sum by (instance) (syncthing_connections_active{instance=~\"$instance\"})", "legendFormat": "{{instance}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Скорость приёма (rx) по узлам",
+      "gridPos": { "h": 8, "w": 12, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 15 } } },
+      "targets": [
+        { "refId": "A", "expr": "sum by (instance) (rate(syncthing_protocol_recv_bytes_total{instance=~\"$instance\"}[5m]))", "legendFormat": "{{instance}} rx" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Скорость отдачи (tx) по узлам",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 15 } } },
+      "targets": [
+        { "refId": "A", "expr": "sum by (instance) (rate(syncthing_protocol_sent_bytes_total{instance=~\"$instance\"}[5m]))", "legendFormat": "{{instance}} tx" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Экономия сжатия (tx)",
+      "gridPos": { "h": 8, "w": 8, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "description": "1 - sent/uncompressed: доля, сэкономленная компрессией на отдаче.",
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "refId": "A", "expr": "1 - (sum by (instance) (rate(syncthing_protocol_sent_bytes_total{instance=~\"$instance\"}[30m])) / clamp_min(sum by (instance) (rate(syncthing_protocol_sent_uncompressed_bytes_total{instance=~\"$instance\"}[30m])), 1))", "legendFormat": "{{instance}}" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Хэширование при сканировании (байт/с)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": { "defaults": { "unit": "Bps" } },
+      "targets": [
+        { "refId": "A", "expr": "sum by (instance, folder) (rate(syncthing_scanner_hashed_bytes_total{instance=~\"$instance\"}[5m]))", "legendFormat": "{{instance}}/{{folder}}" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Конфликты (накопительно)",
+      "gridPos": { "h": 8, "w": 8, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 1 } ] } } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+      "targets": [
+        { "refId": "A", "expr": "sum by (instance, folder) (syncthing_model_folder_conflicts_total{instance=~\"$instance\"})", "legendFormat": "{{instance}}/{{folder}}" }
+      ]
+    }
+  ]
+}
