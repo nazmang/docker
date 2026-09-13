@@ -262,41 +262,6 @@ services:
 #
 # Old objects stay behind once nothing references them; `docker config prune`
 # is safe to run occasionally.
-  # EcoFlow: REST API (developer AccessKey/SecretKey) -> Prometheus.
-  # В облаке намеренно: exporter ходит в облако EcoFlow (api-e.ecoflow.com),
-  # аптайм Swarm высокий и не зависит от питания дома. Авто-обнаружение всех
-  # устройств аккаунта (STREAM Ultra, RIVER 3 Plus) -- SN не задаётся.
-  # Ключи -- из Jenkins credentials через .env, в git их нет.
-  ecoflow-exporter:
-    image: tess1o/go-ecoflow-exporter:1.6.0
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - "node.role==worker"
-      resources:
-        limits:
-          memory: 128M
-        reservations:
-          memory: 32M
-    environment:
-      # MQTT-режим: REST quota/all отдавал только STREAM, RIVER 3 Plus и Shelly
-      # возвращали error 1006 (13.09.2026). MQTT берёт push со всех устройств,
-      # но требует username/password аккаунта (не developer-ключи).
-      - EXPORTER_TYPE=mqtt
-      - PROMETHEUS_ENABLED=true
-      - METRIC_PREFIX=ecoflow
-      - MQTT_DEVICE_OFFLINE_THRESHOLD_SECONDS=30
-      - ECOFLOW_EMAIL=${ECOFLOW_EMAIL}
-      - ECOFLOW_PASSWORD=${ECOFLOW_PASSWORD}
-      - ECOFLOW_DEVICES=BK41ZE1B2H5B5982,R631ZE1AXJ610333
-      - ECOFLOW_DEVICES_PRETTY_NAMES={"BK41ZE1B2H5B5982":"STREAM Ultra","R631ZE1AXJ610333":"RIVER 3 Plus"}
-    networks:
-      - monitoring_net
-    labels:
-      org.label-schema.group: "monitoring"
-
 configs:
   karma_yaml:
     file: ./karma/karma.yaml
