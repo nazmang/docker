@@ -281,12 +281,17 @@ services:
         reservations:
           memory: 32M
     environment:
-      - EXPORTER_TYPE=rest
+      # MQTT-режим: REST quota/all отдавал только STREAM, RIVER 3 Plus и Shelly
+      # возвращали error 1006 (13.09.2026). MQTT берёт push со всех устройств,
+      # но требует username/password аккаунта (не developer-ключи).
+      - EXPORTER_TYPE=mqtt
       - PROMETHEUS_ENABLED=true
       - METRIC_PREFIX=ecoflow
-      - SCRAPING_INTERVAL=60
-      - ECOFLOW_ACCESS_KEY=${ECOFLOW_ACCESS_KEY}
-      - ECOFLOW_SECRET_KEY=${ECOFLOW_SECRET_KEY}
+      - MQTT_DEVICE_OFFLINE_THRESHOLD_SECONDS=30
+      - ECOFLOW_USERNAME=${ECOFLOW_USERNAME}
+      - ECOFLOW_PASSWORD=${ECOFLOW_PASSWORD}
+      - ECOFLOW_DEVICES=BK41ZE1B2H5B5982,R631ZE1AXJ610333,R635ZE1AXH7R0164
+      - ECOFLOW_DEVICES_PRETTY_NAMES={"BK41ZE1B2H5B5982":"STREAM Ultra","R631ZE1AXJ610333":"RIVER 3 Plus","R635ZE1AXH7R0164":"RIVER 3 (2)"}
     networks:
       - monitoring_net
     labels:
