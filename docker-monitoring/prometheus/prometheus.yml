@@ -197,13 +197,14 @@ scrape_configs:
 #    static_configs:
 #      - targets: ['eventlog-proxy:5000', 'eventlog:5000']
 
+  - job_name: "ecoflow"
+    static_configs:
+      - targets: ["ecoflow-exporter:2112"]
+
+
 alerting:
   alertmanagers:
     - scheme: http
       static_configs:
         - targets:
             - "alertmanager:9093"
-
-  - job_name: "ecoflow"
-    static_configs:
-      - targets: ["ecoflow-exporter:2112"]
