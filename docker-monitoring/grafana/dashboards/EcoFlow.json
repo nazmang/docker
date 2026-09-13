@@ -1,0 +1,117 @@
+{
+  "uid": "ecoflow-power",
+  "title": "EcoFlow / Power",
+  "tags": ["power", "ecoflow"],
+  "timezone": "browser",
+  "schemaVersion": 42,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "gauge",
+      "title": "STREAM — заряд (SOC)",
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "orange", "value": 20 },
+            { "color": "green", "value": 50 }
+          ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_battery_percent{entity=\"sensor.stream_max_5982_power_battery_soc\"}",
+          "legendFormat": "SOC" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "STREAM — здоровье / резерв",
+      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "horizontal" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_battery_percent{entity=\"sensor.stream_max_5982_state_of_health\"}",
+          "legendFormat": "Health" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_number_state_percent{entity=\"number.stream_max_5982_backup_reserve_level\"}",
+          "legendFormat": "Backup reserve" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Нагрузка дома (Shelly, суммарно)",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": { "defaults": { "unit": "watt", "color": { "mode": "thresholds" },
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null },
+          { "color": "orange", "value": 2000 },
+          { "color": "red", "value": 3500 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "sum(hass_sensor_power_w{entity=~\"sensor.schetchik_phase_[abc]_power\"})",
+          "legendFormat": "Нагрузка" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "STREAM — потоки мощности",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": { "defaults": { "unit": "watt", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_power_w{entity=\"sensor.stream_max_5982_power_grid\"}", "legendFormat": "Сеть" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_power_w{entity=\"sensor.stream_max_5982_power_battery\"}", "legendFormat": "Батарея" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_power_w{entity=\"sensor.stream_max_5982_power_pv_sum\"}", "legendFormat": "Солнце" },
+        { "refId": "D", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_power_w{entity=\"sensor.stream_max_5982_power_sys_load\"}", "legendFormat": "Нагрузка системы" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Shelly Pro 3EM — мощность по фазам",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": { "defaults": { "unit": "watt", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_power_w{entity=~\"sensor.schetchik_phase_[abc]_power\"}", "legendFormat": "{{friendly_name}}" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "STREAM — SOC во времени",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "fillOpacity": 15, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_battery_percent{entity=\"sensor.stream_max_5982_power_battery_soc\"}", "legendFormat": "SOC" }
+      ]
+    }
+  ]
+}

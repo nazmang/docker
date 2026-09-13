@@ -46,6 +46,8 @@ services:
         mode: 0444
       - source: gf_dash_backups
         target: /etc/grafana/dashboards/Backups.json
+      - source: gf_dash_ecoflow
+        target: /etc/grafana/dashboards/EcoFlow.json
         mode: 0444
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
@@ -321,6 +323,9 @@ configs:
   gf_dash_backups:
     file: ./grafana/dashboards/Backups.json
     name: gf_dash_backups_${PROM_CONFIG_VERSION:-manual}
+  gf_dash_ecoflow:
+    file: ./grafana/dashboards/EcoFlow.json
+    name: gf_dash_ecoflow_${PROM_CONFIG_VERSION:-manual}
 
 networks:
   monitoring_net:
