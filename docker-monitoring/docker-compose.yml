@@ -56,10 +56,14 @@ services:
         constraints:
           - "node.role==worker"
       resources:
+        # 512M was sized for 10.3.5. 13.2.1 idles at ~260 MiB and a heavy
+        # dashboard on a short refresh pushed it past the limit four times on
+        # 2026-09-12 (exit 137, OOMKilled) -- the proxy answered 502 while
+        # Swarm restarted the task. dkr02 has ~4 GB to spare.
         limits:
-          memory: 512M
+          memory: 1G
         reservations:
-          memory: 256M
+          memory: 512M
     networks:
       - monitoring_net
       - gateway_gw_net
