@@ -112,6 +112,72 @@
         { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
           "expr": "hass_sensor_battery_percent{entity=\"sensor.stream_max_5982_power_battery_soc\"}", "legendFormat": "SOC" }
       ]
+    },
+    {
+      "id": 10, "type": "row", "title": "RIVER 3 Plus (шкаф)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 }
+    },
+    {
+      "id": 11,
+      "type": "gauge",
+      "title": "RIVER 3 Plus — заряд (SOC)",
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "orange", "value": 20 },
+            { "color": "green", "value": 50 }
+          ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_battery_percent{entity=\"sensor.river_3_plus_main_battery_level\"}",
+          "legendFormat": "SOC" }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "RIVER 3 Plus — здоровье / остаток",
+      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "horizontal" },
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "unit", "value": "percent" }] },
+        { "matcher": { "id": "byFrameRefID", "options": "B" }, "properties": [{ "id": "unit", "value": "m" }] }
+      ] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_battery_percent{entity=\"sensor.river_3_plus_state_of_health\"}",
+          "legendFormat": "Health" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_duration_min{entity=\"sensor.river_3_plus_discharge_remaining_time\"}",
+          "legendFormat": "Остаток разряда" }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "RIVER 3 Plus — потоки мощности",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+      "fieldConfig": { "defaults": { "unit": "watt", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_power_w{entity=\"sensor.river_3_plus_total_in_power\"}", "legendFormat": "Вход всего" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_power_w{entity=\"sensor.river_3_plus_total_out_power\"}", "legendFormat": "Выход всего" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_power_w{entity=\"sensor.river_3_plus_ac_out_power\"}", "legendFormat": "AC выход" },
+        { "refId": "D", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
+          "expr": "hass_sensor_power_w{entity=\"sensor.river_3_plus_dc_out_power\"}", "legendFormat": "DC выход (прикуриватель)" }
+      ]
     }
   ]
 }
