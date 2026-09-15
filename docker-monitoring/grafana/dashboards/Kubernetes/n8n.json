@@ -958,7 +958,7 @@
         "type": "prometheus",
         "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
       },
-      "description": "Предел контейнера показан намеренно: heap выделено всегда идёт впритык к используемому, поэтому их отношение ничего не значит. Значение имеет расстояние до предела.",
+      "description": "Процесс n8n: heap и RSS из его собственных Node-метрик. Предел контейнера показан намеренно: heap выделено всегда идёт впритык к используемому, поэтому их отношение ничего не значит; значение имеет расстояние до предела. Предел — только контейнера n8n: до 15.09.2026 здесь была сумма лимитов по всему namespace, и появление silerod (3 GiB) выглядело как скачок предела n8n с 2 до 5 GiB. Остальные контейнеры namespace — на панели «Память по контейнерам» ниже.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1059,9 +1059,9 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "sum(kube_pod_container_resource_limits{namespace=\"n8n\",resource=\"memory\"})",
+          "expr": "max(kube_pod_container_resource_limits{namespace=\"n8n\",container=\"n8n\",resource=\"memory\"})",
           "instant": false,
-          "legendFormat": "предел контейнера",
+          "legendFormat": "предел контейнера n8n",
           "range": true,
           "refId": "D"
         }
@@ -1328,6 +1328,138 @@
         }
       ],
       "title": "Кэш",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
+      "id": 19,
+      "panels": [],
+      "title": "Контейнеры namespace n8n",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+      },
+      "description": "Память каждого контейнера namespace n8n по cAdvisor (working set — то, что считает OOM-killer), и лимит каждого. n8n — постоянный процесс; silerod — сервис черновой озвучки (torch + модель Silero, ~0.7 GiB после прогрева, лимит 3 GiB); renderd — одноразовые Job'ы рендера, живут ~30 с на ролик, поэтому линия прерывистая и появляется только во время рендера. max by (container), а не sum: при перезапуске пода или двух параллельных Job'ах сумма удваивала бы число (см. коммит 2a6cbf6).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^предел .*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "id": 20,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+          },
+          "editorMode": "code",
+          "expr": "max by (container) (container_memory_working_set_bytes{namespace=\"n8n\",container=~\"n8n|silerod|renderd\"})",
+          "instant": false,
+          "legendFormat": "{{container}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+          },
+          "editorMode": "code",
+          "expr": "max by (container) (kube_pod_container_resource_limits{namespace=\"n8n\",resource=\"memory\",container=~\"n8n|silerod|renderd\"})",
+          "instant": false,
+          "legendFormat": "предел {{container}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Память по контейнерам",
       "type": "timeseries"
     }
   ],
