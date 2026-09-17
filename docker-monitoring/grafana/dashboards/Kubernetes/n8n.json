@@ -1348,7 +1348,7 @@
         "type": "prometheus",
         "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
       },
-      "description": "Память каждого контейнера namespace n8n по cAdvisor (working set — то, что считает OOM-killer), и лимит каждого. n8n — постоянный процесс; silerod — сервис черновой озвучки (torch + модель Silero, ~0.7 GiB после прогрева, лимит 3 GiB); renderd — одноразовые Job'ы рендера, живут ~30 с на ролик, поэтому линия прерывистая и появляется только во время рендера. max by (container), а не sum: при перезапуске пода или двух параллельных Job'ах сумма удваивала бы число (см. коммит 2a6cbf6).",
+      "description": "Память каждого контейнера namespace n8n по cAdvisor (working set — то, что считает OOM-killer), и лимит каждого. n8n — постоянный процесс; silerod — сервис черновой озвучки (torch + модель Silero, ~0.7 GiB после прогрева, лимит 3 GiB); inboxd — бот-предложка (long polling, ~100 MiB); renderd — одноразовые Job'ы рендера, живут ~30 с на ролик, поэтому линия прерывистая и появляется только во время рендера. max by (container), а не sum: при перезапуске пода или двух параллельных Job'ах сумма удваивала бы число (см. коммит 2a6cbf6).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1440,7 +1440,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "max by (container) (container_memory_working_set_bytes{namespace=\"n8n\",container=~\"n8n|silerod|renderd\"})",
+          "expr": "max by (container) (container_memory_working_set_bytes{namespace=\"n8n\",container=~\"n8n|silerod|renderd|inboxd\"})",
           "instant": false,
           "legendFormat": "{{container}}",
           "range": true,
@@ -1452,7 +1452,7 @@
             "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
           },
           "editorMode": "code",
-          "expr": "max by (container) (kube_pod_container_resource_limits{namespace=\"n8n\",resource=\"memory\",container=~\"n8n|silerod|renderd\"})",
+          "expr": "max by (container) (kube_pod_container_resource_limits{namespace=\"n8n\",resource=\"memory\",container=~\"n8n|silerod|renderd|inboxd\"})",
           "instant": false,
           "legendFormat": "предел {{container}}",
           "range": true,
@@ -1460,6 +1460,359 @@
         }
       ],
       "title": "Память по контейнерам",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 49
+      },
+      "id": 21,
+      "panels": [],
+      "title": "inboxd — бот-предложка",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+      },
+      "description": "Принятые и отклонённые заявки, по причине отклонения: banned, rate_hour, rate_day, duplicate, stopword, empty. Алерты InboxdMostSubmissionsDropped и InboxdSubmissionFlood считают то же самое.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 50
+      },
+      "id": 22,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(inboxd_submissions_total{result=\"accepted\"}[1h]))",
+          "instant": false,
+          "legendFormat": "принято",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+          },
+          "editorMode": "code",
+          "expr": "sum by (reason) (increase(inboxd_submissions_total{result=\"dropped\"}[1h]))",
+          "instant": false,
+          "legendFormat": "отклонено: {{reason}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Заявки в час",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+      },
+      "description": "По HTTP-статусу вебхука tipline-intake. 2xx — доставлено; 401/403 — токен разошёлся; 404 — воркфлоу не опубликован; none — сеть. Недоставленное ждёт в outbox (панель справа внизу).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 50
+      },
+      "id": 23,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+          },
+          "editorMode": "code",
+          "expr": "sum by (status) (increase(inboxd_deliveries_total[1h]))",
+          "instant": false,
+          "legendFormat": "HTTP {{status}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Доставки в n8n в час",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+      },
+      "description": "Автоматические (страйки) и операторские. Больше 5 в час — InboxdBanSpike: либо волна спама, либо анти-спам режет живых людей.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 58
+      },
+      "id": 24,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+          },
+          "editorMode": "code",
+          "expr": "sum by (by) (increase(inboxd_bans_total[1h]))",
+          "instant": false,
+          "legendFormat": "{{by}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Баны в час",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+      },
+      "description": "outbox_pending — принятые, но не доставленные в n8n заявки (InboxdOutboxStuck через 2 ч); open_groups — медиа-группы, ждущие завершения отправителем.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 58
+      },
+      "id": 25,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+          },
+          "editorMode": "code",
+          "expr": "max(inboxd_outbox_pending)",
+          "instant": false,
+          "legendFormat": "outbox: не доставлено",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+          },
+          "editorMode": "code",
+          "expr": "max(inboxd_open_groups)",
+          "instant": false,
+          "legendFormat": "открытых групп",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Очередь и сессии",
       "type": "timeseries"
     }
   ],
