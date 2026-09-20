@@ -23,6 +23,10 @@ services:
       - source: gf_provider_dashboards
         target: /etc/grafana/provisioning/dashboards/dashboards.yml
         mode: 0444
+      # Postgres datasource for the pipeline-spend database (grafana/datasources/costs.yml).
+      - source: gf_ds_costs
+        target: /etc/grafana/provisioning/datasources/costs.yml
+        mode: 0444
       - source: gf_dash_docker_containers
         target: /etc/grafana/dashboards/Docker/docker-containers.json
         mode: 0444
@@ -55,6 +59,10 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      # Read-only Postgres password for the costs datasource; from the Jenkins
+      # credential grafanaCostsDbPassword via .env. No default on purpose: an
+      # empty password fails the datasource test loudly instead of quietly.
+      - GF_COSTS_DB_PASSWORD=${GF_COSTS_DB_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
     deploy:
       placement:
@@ -302,6 +310,9 @@ configs:
   gf_provider_dashboards:
     file: ./grafana/provisioning/dashboards/dashboards.yml
     name: gf_provider_dashboards_${PROM_CONFIG_VERSION:-manual}
+  gf_ds_costs:
+    file: ./grafana/datasources/costs.yml
+    name: gf_ds_costs_${PROM_CONFIG_VERSION:-manual}
   gf_dash_docker_containers:
     file: ./grafana/dashboards/Docker/docker-containers.json
     name: gf_dash_docker_containers_${PROM_CONFIG_VERSION:-manual}
