@@ -3727,7 +3727,11 @@
   "templating": {
     "list": [
       {
-        "current": {},
+        "current": {
+          "selected": true,
+          "text": "prometheus-k8s",
+          "value": "f4892aa5-8faf-4389-8230-b45b64a2132f"
+        },
         "description": null,
         "error": null,
         "hide": 0,
@@ -3738,7 +3742,7 @@
         "options": [],
         "query": "prometheus",
         "refresh": 1,
-        "regex": "",
+        "regex": "/prometheus-k8s|Prometheus/",
         "skipUrlSync": false,
         "type": "datasource"
       },
