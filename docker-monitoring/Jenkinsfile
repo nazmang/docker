@@ -39,8 +39,14 @@ pipeline {
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
         TELEGRAM_CHAT_ID = credentials('telegramChatid')  
-        // Read-only Postgres password for Grafana's costs datasource (Secret text in Jenkins).
-        GF_COSTS_DB_PASSWORD = credentials('grafanaCostsDbPassword')
+        // Read-only Postgres password for Grafana's costs datasource is read in
+        // 'Create Files' with withCredentials inside try/catch, NOT here:
+        // credentials() in this block fails the whole run before an agent is
+        // even allocated when the Secret text is missing (2026-09-21, first
+        // build after #55: "ERROR: grafanaCostsDbPassword", and the Telegram
+        // post step died with "FilePath is missing" on top). The costs
+        // datasource is optional; a missing credential must not block the
+        // monitoring stack.
         // Slack params
         // SLACK_URL = 'https://hooks.slack.com/services/TOKEN' // Slack webhook URL for Alertmanager
         // SLACK_CHANNEL = 'general' // Slack channel for alerts
@@ -68,10 +74,21 @@ pipeline {
                         script: 'git rev-parse --short=8 HEAD',
                         returnStdout: true
                     ).trim()
+                    // Optional: grafanaCostsDbPassword (Secret text). Absent -> empty
+                    // value; the stack deploys, the costs datasource fails its own
+                    // connection test loudly in Grafana, nothing else is affected.
+                    def costsDbPassword = ''
+                    try {
+                        withCredentials([string(credentialsId: 'grafanaCostsDbPassword', variable: 'COSTS_PW')]) {
+                            costsDbPassword = env.COSTS_PW
+                        }
+                    } catch (err) {
+                        echo "grafanaCostsDbPassword credential not configured; costs datasource will stay unauthenticated (${err.message})"
+                    }
                     def envContent = """
                     GF_SECURITY_ADMIN_USER=${env.GF_SECURITY_ADMIN_USER}
                     GF_SECURITY_ADMIN_PASSWORD=${env.GF_SECURITY_ADMIN_PASSWORD}
-                    GF_COSTS_DB_PASSWORD=${env.GF_COSTS_DB_PASSWORD}
+                    GF_COSTS_DB_PASSWORD=${costsDbPassword}
                     # SLACK_URL=${env.SLACK_URL}
                     # SLACK_CHANNEL=${env.SLACK_CHANNEL}
                     # SLACK_USER=${env.SLACK_USER}
