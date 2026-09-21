@@ -1,0 +1,20 @@
+# Postgres datasource for the pipeline-spend database (bg-coast-news spec
+# docs/superpowers/specs/2026-09-20-pipeline-costs-design.md §7). Read-only
+# role; the password arrives as GF_COSTS_DB_PASSWORD from the Jenkins
+# credential grafanaCostsDbPassword -- it is never written here.
+apiVersion: 1
+datasources:
+  - name: costs
+    uid: costs-postgres
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: 10.164.1.105:55432
+    user: grafana
+    secureJsonData:
+      password: $GF_COSTS_DB_PASSWORD
+    jsonData:
+      database: costs
+      sslmode: disable          # same private-network hop n8n uses to this Postgres
+      postgresVersion: 1600
+      timescaledb: false
+    editable: false

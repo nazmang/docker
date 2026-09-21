@@ -39,6 +39,8 @@ pipeline {
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
         TELEGRAM_CHAT_ID = credentials('telegramChatid')  
+        // Read-only Postgres password for Grafana's costs datasource (Secret text in Jenkins).
+        GF_COSTS_DB_PASSWORD = credentials('grafanaCostsDbPassword')
         // Slack params
         // SLACK_URL = 'https://hooks.slack.com/services/TOKEN' // Slack webhook URL for Alertmanager
         // SLACK_CHANNEL = 'general' // Slack channel for alerts
@@ -69,6 +71,7 @@ pipeline {
                     def envContent = """
                     GF_SECURITY_ADMIN_USER=${env.GF_SECURITY_ADMIN_USER}
                     GF_SECURITY_ADMIN_PASSWORD=${env.GF_SECURITY_ADMIN_PASSWORD}
+                    GF_COSTS_DB_PASSWORD=${env.GF_COSTS_DB_PASSWORD}
                     # SLACK_URL=${env.SLACK_URL}
                     # SLACK_CHANNEL=${env.SLACK_CHANNEL}
                     # SLACK_USER=${env.SLACK_USER}
