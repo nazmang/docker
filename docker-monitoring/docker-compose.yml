@@ -93,8 +93,18 @@ services:
       mode: replicated
       replicas: 1
       placement:
+        # Pinned to dkr03 since 2026-09-29. It used to follow node.role==manager,
+        # i.e. dkr01 -- the only manager and the smallest node (3.9 GB, no swap),
+        # which also runs tutor-postgres, the gateway and every Jenkins build.
+        # dkr01 sat at 350-480 major page faults/s all day (1000+ under builds)
+        # and MemoryPressure fired continuously. At the time of the move dkr03
+        # had 6.3 GB available and 0 faults/s; dkr02 only ~1 GB and was paging
+        # itself. Nothing here needs a manager: Swarm discovery goes through
+        # tcp://dockerproxy:2375 over the overlay network, and the TSDB lives on
+        # /data (NFS from nas01, mounted on every dkr node), so history moves
+        # with the task.
         constraints:
-          - "node.role==manager"
+          - "node.hostname==dkr03"
       resources:
         limits:
           memory: 3G
