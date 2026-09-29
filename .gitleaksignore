@@ -1,6 +1,21 @@
-34791472c76f304eb2f306c6da9c58f646d1aca0:docker-elk/.env.sample:generic-api-key:41
-b8512f51faeeb36ebee2791eb699d56c0b30ef27:docker-ansible-semaphore/.semaphore.env.sample:generic-api-key:13
-c5dd67a1d2cb5051c1ae0a2f96a7da48651aef5f:docker-zabbix/docker-compose.yml:generic-api-key:37
-746d8bac3494ccd2c44f3d773c8e7ebce59f6300:docker-zabbix/docker-compose.yml:generic-api-key:37
-34791472c76f304eb2f306c6da9c58f646d1aca0:docker-elk/entrypoint.sh:curl-auth-user:39
+# Historic findings only. Each entry is a secret that has been rotated and is
+# dead; the commits stay in public history, so a full-history scan would flag
+# them forever. Never add a fingerprint here for a secret that is still live --
+# rotate first, then ignore.
+#
+# OpenSearch `fluentd` user password, literal in create_user.sh from
+# 2025-04-28 until 2026-09-29. Rotated 2026-09-29 (old value returns 401).
+5728d393d7259c17b41edc2857a248e055586495:docker-fluentd/fluentd/create_user.sh:generic-api-key:19
+08a7501cfec55b439fac884c6e03aa05b0534403:docker-fluentd/fluentd/create_user.sh:generic-api-key:19
+
+# Not secrets, or values that match nothing live. Each checked 2026-09-29.
+# False positive: POSTGRES_INITDB_ARGS is initdb flags (--auth-host=scram-sha-256), not a secret.
 1cdee2ef5c5029687b3566daa70f351efaa3f5a0:docker-zabbix/docker-compose.yml:generic-api-key:37
+746d8bac3494ccd2c44f3d773c8e7ebce59f6300:docker-zabbix/docker-compose.yml:generic-api-key:37
+c5dd67a1d2cb5051c1ae0a2f96a7da48651aef5f:docker-zabbix/docker-compose.yml:generic-api-key:37
+# Sample file; ENCRYPTION_KEY there matches nothing live -- the ELK stack is not deployed anywhere (checked 2026-09-29).
+34791472c76f304eb2f306c6da9c58f646d1aca0:docker-elk/.env.sample:generic-api-key:41
+# False positive: curl -u takes $ELASTIC_PASSWORD from the environment.
+34791472c76f304eb2f306c6da9c58f646d1aca0:docker-elk/entrypoint.sh:curl-auth-user:39
+# Sample file; its access-key-encryption value differs from the live Semaphore secret in k8s (hash compared 2026-09-29).
+b8512f51faeeb36ebee2791eb699d56c0b30ef27:docker-ansible-semaphore/.semaphore.env.sample:generic-api-key:13
