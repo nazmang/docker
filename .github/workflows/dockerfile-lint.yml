@@ -13,8 +13,14 @@
 #     (it had found a real, live password -- see .gitleaksignore). Secret
 #     scanning lives in gitleaks.yml only.
 #
+# Renamed from hadolint.yml on 2026-09-29: after GitHub's inactivity
+# auto-disable and re-enable, the old workflow (id 153133941) never started a
+# run again -- every run stayed `queued` with zero jobs, even a stripped-down
+# copy dispatched from a branch. The same job under a new file (new workflow
+# id) ran at once. Branch protection matches the JOB name below, not the file.
+#
 # The job name is the required status check on master; do not rename it.
-name: Hadolint
+name: Dockerfile lint
 
 on:
   push:
