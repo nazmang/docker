@@ -20,7 +20,12 @@ services:
     # No extra privileges: tested without --privileged and without /dev/kmsg,
     # which cAdvisor's own docs suggest, and the labels appear regardless.
     image: ghcr.io/google/cadvisor:${CADVISOR_TAG:-v0.60.5}
-    command: --logtostderr=true
+    # --housekeeping_interval: the default is 1s per container. Prometheus
+    # scrapes every 15s, so 10s loses nothing and cuts cAdvisor's constant
+    # reading of /sys and /var/lib/docker (see the memory note below).
+    command:
+      - --logtostderr=true
+      - --housekeeping_interval=10s
     deploy:
       mode: global
       restart_policy:
@@ -29,11 +34,17 @@ services:
         max_attempts: 3
       resources:
         limits:
-          # 0.60.5 sits at 81 MiB on a node running 17 containers, which leaves
-          # almost nothing under the old 128M ceiling on a busier node.
-          memory: 256M
+          # 256M -> 512M on 2026-09-29. At 256M cAdvisor sat at its ceiling
+          # (working set 203 MiB on dkr01, 230 MiB on dkr02; the cgroup limit
+          # also counts the page cache of everything it reads) and kept
+          # evicting its own pages: ~840 major faults/s on dkr01 -- measured
+          # per process, practically all of the node's paging -- which is what
+          # the MemoryPressure alert on dkr01/dkr02 had been reporting all
+          # along. Moving Prometheus off dkr01 freed 420 MB and did not change
+          # it; this was the actual cause.
+          memory: 512M
         reservations:
-          memory: 96M
+          memory: 128M
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
