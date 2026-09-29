@@ -22,7 +22,13 @@ pipeline {
         // fluentd/create_user.sh in this public repo. Required on purpose:
         // fluentd without it ships nothing, so a missing credential must fail
         // the build rather than deploy a silent 401 loop.
-        OS_PASSWORD = credentials('opensearchFluentdPassword')
+        // Deliberately NOT named OS_PASSWORD: the job still carries a legacy
+        // build parameter OS_PASSWORD (UI-configured, the old leaked value),
+        // and a build parameter overrides an `environment` variable of the same
+        // name -- the first deploy after the rotation (#104, 2026-09-29) wrote
+        // the OLD password into .env and fluentd got 401. The .env key below is
+        // still OS_PASSWORD, which is what docker-compose.yml reads.
+        OS_FLUENTD_PASSWORD = credentials('opensearchFluentdPassword')
     }
 
     stages {
@@ -37,7 +43,7 @@ pipeline {
                 script {
                     def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
                     def envContent = """
-                    OS_PASSWORD=${env.OS_PASSWORD}
+                    OS_PASSWORD=${env.OS_FLUENTD_PASSWORD}
                     """
                     // echo "Generated .env content:\n${envContent}"
                     writeFile file: "${composeDir}/.env", text: envContent
