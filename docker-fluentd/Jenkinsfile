@@ -15,7 +15,14 @@ pipeline {
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
         TELEGRAM_CHAT_ID = credentials('telegramChatid')
-        OS_PASSWORD = "${params.OS_PASSWORD}"
+        // OpenSearch password of the `fluentd` user, a Jenkins Secret text.
+        // Until 2026-09-29 this read params.OS_PASSWORD, a parameter the
+        // `parameters` block never declared (so a fresh run wrote
+        // OS_PASSWORD=null), and the same value sat as a literal in
+        // fluentd/create_user.sh in this public repo. Required on purpose:
+        // fluentd without it ships nothing, so a missing credential must fail
+        // the build rather than deploy a silent 401 loop.
+        OS_PASSWORD = credentials('opensearchFluentdPassword')
     }
 
     stages {
