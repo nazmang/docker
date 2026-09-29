@@ -16,8 +16,15 @@ pipeline {
         DOCKER_COMPOSE_DIR = 'docker-monitoring' // Path to docker-compose.yml
         DOCKER_COMPOSE_FILE = 'docker-compose.yml' // Name of your main Docker Compose file
         // Grafana params
-        GF_SECURITY_ADMIN_USER = "${params.GF_ADMIN_USER}" // Default admin user for Grafana
-        GF_SECURITY_ADMIN_PASSWORD = "${params.GF_ADMIN_PASSWORD}" // Default admin password for Grafana    
+        // Grafana admin, a Jenkins "Username with password" credential. Exposes
+        // GRAFANA_ADMIN_USR / GRAFANA_ADMIN_PSW. Until 2026-09-29 this read
+        // params.GF_ADMIN_USER / GF_ADMIN_PASSWORD -- parameters the
+        // `parameters` block never declared, holding a stale password in clear
+        // in the job config (Grafana's admin password had long been changed in
+        // the UI, so the env value no longer matched). Note Grafana applies
+        // GF_SECURITY_ADMIN_* only when it initialises an empty data volume;
+        // keeping it correct matters for a rebuild, not for the running one.
+        GRAFANA_ADMIN = credentials('grafanaAdmin')
         // Image tags 
         // 13.2.1 с 11.09.2026. Здесь стояло 10.3.5, хотя обновление уже было
         // выкачено -- то есть первый же деплой стека молча откатил бы Grafana
@@ -86,8 +93,8 @@ pipeline {
                         echo "grafanaCostsDbPassword credential not configured; costs datasource will stay unauthenticated (${err.message})"
                     }
                     def envContent = """
-                    GF_SECURITY_ADMIN_USER=${env.GF_SECURITY_ADMIN_USER}
-                    GF_SECURITY_ADMIN_PASSWORD=${env.GF_SECURITY_ADMIN_PASSWORD}
+                    GF_SECURITY_ADMIN_USER=${env.GRAFANA_ADMIN_USR}
+                    GF_SECURITY_ADMIN_PASSWORD=${env.GRAFANA_ADMIN_PSW}
                     GF_COSTS_DB_PASSWORD=${costsDbPassword}
                     # SLACK_URL=${env.SLACK_URL}
                     # SLACK_CHANNEL=${env.SLACK_CHANNEL}
