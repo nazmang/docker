@@ -1833,7 +1833,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "description": "Стоимость по дням из OpenAI Costs API, стеком по моделям (line_item без суффикса input/output). Только проект пайплайна. Последние 1–2 дня могут подрасти: OpenAI досчитывает с задержкой, сборщик перезаписывает три дня.",
+      "description": "Стоимость по дням из OpenAI Costs API, стеком по моделям (line_item без суффикса input/output). Сумма по ВСЕМ проектам организации (с 2026-09-29; до этого — только проект пайплайна). Последние 1–2 дня могут подрасти: OpenAI досчитывает с задержкой, сборщик перезаписывает три дня.",
       "gridPos": {
         "h": 9,
         "w": 12,
@@ -1854,7 +1854,7 @@
           "refId": "A"
         }
       ],
-      "title": "OpenAI по дням, $",
+      "title": "OpenAI по дням и моделям, $",
       "type": "timeseries",
       "fieldConfig": {
         "defaults": {
@@ -1906,7 +1906,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "description": "Сумма OpenAI с 1-го числа текущего месяца (UTC).",
+      "description": "Сумма OpenAI с 1-го числа текущего месяца (UTC). По всем проектам организации.",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -1966,7 +1966,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "description": "Месяц-к-дате, экстраполированный на весь месяц. Пусто до 5-го числа — раньше это шум.",
+      "description": "Месяц-к-дате, экстраполированный на весь месяц. Пусто до 5-го числа — раньше это шум. По всем проектам организации.",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -2213,6 +2213,79 @@
       "options": {
         "showHeader": true,
         "sortBy": []
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "costs-postgres"
+      },
+      "description": "Стоимость по дням стеком по проектам организации OpenAI. Имя — из openai_projects (сборщик обновляет его каждый запуск); если проекта там нет (удалён), показан его id.",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 83
+      },
+      "id": 33,
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "costs-postgres"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "A",
+          "rawSql": "SELECT c.day AS time, coalesce(p.name, nullif(c.project, ''), 'без проекта') AS metric, sum(c.usd) AS value\nFROM costs_daily c LEFT JOIN openai_projects p ON p.id = c.project\nWHERE c.service='openai' AND $__timeFilter(c.day)\nGROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "title": "OpenAI по проектам, $",
+      "type": "timeseries",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "axisPlacement": "auto",
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       }
     }
   ],
