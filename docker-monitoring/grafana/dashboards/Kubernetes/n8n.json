@@ -1825,7 +1825,7 @@
       },
       "id": 26,
       "panels": [],
-      "title": "Расходы (OpenAI, ElevenLabs)",
+      "title": "Расходы bg-coast-news (OpenAI bg_coast + ElevenLabs)",
       "type": "row"
     },
     {
@@ -1833,7 +1833,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "description": "Стоимость по дням из OpenAI Costs API, стеком по «проект · модель» — модели разных проектов не сливаются в одну серию. Какие проекты — переменная «Проект OpenAI» вверху (по умолчанию все). Последние 1–2 дня могут подрасти: OpenAI досчитывает с задержкой.",
+      "description": "Только проект OpenAI «bg_coast» — расходы этого пайплайна. Стеком по моделям; модели без расходов не показываются. Все проекты организации — на отдельном дашборде «Расходы — все проекты». Последние 1–2 дня могут подрасти: OpenAI досчитывает с задержкой.",
       "gridPos": {
         "h": 9,
         "w": 12,
@@ -1850,7 +1850,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT c.day AS time,\n  coalesce(p.name, c.project) || ' · ' || regexp_replace(c.item, ',\\s*.*$', '') AS metric,\n  sum(c.usd) AS value\nFROM costs_daily c LEFT JOIN openai_projects p ON p.id = c.project\nWHERE c.service='openai' AND c.project IN (${oai_project:sqlstring}) AND $__timeFilter(c.day)\nGROUP BY 1, 2 ORDER BY 1",
+          "rawSql": "SELECT c.day AS time, regexp_replace(c.item, ',\\s*.*$', '') AS metric, sum(c.usd) AS value\nFROM costs_daily c JOIN openai_projects p ON p.id = c.project\nWHERE c.service='openai' AND p.name = 'bg_coast' AND $__timeFilter(c.day)\nGROUP BY 1, 2 HAVING sum(c.usd) > 0 ORDER BY 1",
           "refId": "A"
         }
       ],
@@ -1906,7 +1906,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "description": "Сумма OpenAI с 1-го числа текущего месяца (UTC). Только проекты, выбранные в «Проект OpenAI».",
+      "description": "Сумма OpenAI проекта bg_coast с 1-го числа текущего месяца (UTC).",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -1923,7 +1923,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT sum(usd) AS value FROM costs_daily\nWHERE service='openai' AND project IN (${oai_project:sqlstring}) AND day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date",
+          "rawSql": "SELECT sum(c.usd) AS value\nFROM costs_daily c JOIN openai_projects p ON p.id = c.project\nWHERE c.service='openai' AND p.name = 'bg_coast' AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date",
           "refId": "A"
         }
       ],
@@ -1966,7 +1966,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "description": "Месяц-к-дате, экстраполированный на весь месяц. Пусто до 5-го числа — раньше это шум. Только проекты, выбранные в «Проект OpenAI».",
+      "description": "Месяц-к-дате проекта bg_coast, экстраполированный на весь месяц. Пусто до 5-го числа — раньше это шум.",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -1983,7 +1983,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH m AS (SELECT sum(usd) s, count(distinct day) d FROM costs_daily WHERE service='openai' AND project IN (${oai_project:sqlstring}) AND day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date)\nSELECT CASE WHEN d >= 5 THEN s * extract(day from (date_trunc('month', now()) + interval '1 month - 1 day')) / d END AS value FROM m",
+          "rawSql": "WITH m AS (SELECT sum(c.usd) s, count(distinct c.day) d FROM costs_daily c JOIN openai_projects p ON p.id = c.project\n  WHERE c.service='openai' AND p.name = 'bg_coast' AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date)\nSELECT CASE WHEN d >= 5 THEN s * extract(day from (date_trunc('month', now()) + interval '1 month - 1 day')) / d END AS value FROM m",
           "refId": "A"
         }
       ],
@@ -2112,7 +2112,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT day AS time, units AS value FROM costs_daily WHERE service='elevenlabs' AND $__timeFilter(day) ORDER BY 1",
+          "rawSql": "SELECT day AS time, units AS \"символы\" FROM costs_daily WHERE service='elevenlabs' AND $__timeFilter(day) ORDER BY 1",
           "refId": "A"
         }
       ],
@@ -2168,7 +2168,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "description": "Сырые строки costs_daily. fetched_at показывает, когда сборщик работал последний раз — это heartbeat: per-workflow алертов в Prometheus нет (метрики n8n без лейбла воркфлоу).",
+      "description": "Строки costs_daily этого пайплайна: OpenAI bg_coast и ElevenLabs. fetched_at — когда сборщик работал последний раз (heartbeat).",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -2185,7 +2185,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT day, service, item, usd, units, fetched_at FROM costs_daily WHERE day >= (now() AT TIME ZONE 'UTC')::date - 7 ORDER BY day DESC, service, item",
+          "rawSql": "SELECT c.day, c.service, c.item, c.usd, c.units, c.fetched_at\nFROM costs_daily c LEFT JOIN openai_projects p ON p.id = c.project\nWHERE c.day >= (now() AT TIME ZONE 'UTC')::date - 7\n  AND (c.service = 'elevenlabs' OR p.name = 'bg_coast')\n  AND (c.usd > 0 OR c.units > 0)\nORDER BY c.day DESC, c.service, c.item",
           "refId": "A"
         }
       ],
@@ -2214,79 +2214,6 @@
         "showHeader": true,
         "sortBy": []
       }
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "costs-postgres"
-      },
-      "description": "Стоимость по дням стеком по проектам организации OpenAI. Имя — из openai_projects (сборщик обновляет его каждый запуск); если проекта там нет (удалён), показан его id.",
-      "gridPos": {
-        "h": 9,
-        "w": 24,
-        "x": 0,
-        "y": 83
-      },
-      "id": 33,
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "costs-postgres"
-          },
-          "editorMode": "code",
-          "format": "time_series",
-          "rawQuery": true,
-          "refId": "A",
-          "rawSql": "SELECT c.day AS time, coalesce(p.name, nullif(c.project, ''), 'без проекта') AS metric, sum(c.usd) AS value\nFROM costs_daily c LEFT JOIN openai_projects p ON p.id = c.project\nWHERE c.service='openai' AND c.project IN (${oai_project:sqlstring}) AND $__timeFilter(c.day)\nGROUP BY 1, 2 ORDER BY 1"
-        }
-      ],
-      "title": "OpenAI по проектам, $",
-      "type": "timeseries",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "currencyUSD",
-          "custom": {
-            "drawStyle": "bars",
-            "fillOpacity": 80,
-            "lineWidth": 1,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "axisPlacement": "auto",
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "calcs": [
-            "sum"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
     }
   ],
   "refresh": "1m",
@@ -2296,35 +2223,7 @@
     "automation"
   ],
   "templating": {
-    "list": [
-      {
-        "name": "oai_project",
-        "label": "Проект OpenAI",
-        "type": "query",
-        "datasource": {
-          "type": "grafana-postgresql-datasource",
-          "uid": "costs-postgres"
-        },
-        "definition": "SELECT name AS __text, id AS __value FROM openai_projects ORDER BY name",
-        "query": "SELECT name AS __text, id AS __value FROM openai_projects ORDER BY name",
-        "refresh": 1,
-        "multi": true,
-        "includeAll": true,
-        "allValue": null,
-        "sort": 0,
-        "hide": 0,
-        "current": {
-          "selected": true,
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
-        "options": []
-      }
-    ]
+    "list": []
   },
   "time": {
     "from": "now-6h",
