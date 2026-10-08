@@ -1825,7 +1825,7 @@
       },
       "id": 26,
       "panels": [],
-      "title": "Расходы bg-coast-news (OpenAI bg_coast + ElevenLabs)",
+      "title": "Расходы bg-coast-news (AI-провайдеры пайплайна + ElevenLabs)",
       "type": "row"
     },
     {
@@ -1833,7 +1833,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "description": "Только проект OpenAI «bg_coast» — расходы этого пайплайна. Стеком по моделям; модели без расходов не показываются. Все проекты организации — на отдельном дашборде «Расходы — все проекты». Последние 1–2 дня могут подрасти: OpenAI досчитывает с задержкой.",
+      "description": "Только то, что помечено как расходы пайплайна: projects.pipeline = true (OpenAI bg_coast и проекты/ключи других провайдеров, отмеченные владельцем). Что считать «нашим» — одна строка UPDATE projects, не правка дашборда. Все провайдеры — на дашборде «Расходы — все провайдеры и проекты».",
       "gridPos": {
         "h": 9,
         "w": 12,
@@ -1850,11 +1850,11 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT c.day AS time, regexp_replace(c.item, ',\\s*.*$', '') AS metric, sum(c.usd) AS value\nFROM costs_daily c JOIN openai_projects p ON p.id = c.project\nWHERE c.service='openai' AND p.name = 'bg_coast' AND $__timeFilter(c.day)\nGROUP BY 1, 2 HAVING sum(c.usd) > 0 ORDER BY 1",
+          "rawSql": "SELECT c.day AS time, c.service || ' · ' || regexp_replace(c.item, ',\\s*.*$', '') AS metric, sum(c.usd) AS value\nFROM costs_daily c LEFT JOIN projects p ON p.service = c.service AND p.id = c.project\nWHERE c.service <> 'elevenlabs' AND p.pipeline AND $__timeFilter(c.day)\nGROUP BY 1, 2 HAVING sum(c.usd) > 0 ORDER BY 1",
           "refId": "A"
         }
       ],
-      "title": "OpenAI по дням и моделям, $",
+      "title": "AI-провайдеры по дням и моделям, $",
       "type": "timeseries",
       "fieldConfig": {
         "defaults": {
@@ -1906,7 +1906,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "description": "Сумма OpenAI проекта bg_coast с 1-го числа текущего месяца (UTC).",
+      "description": "AI-провайдеры пайплайна (projects.pipeline) с 1-го числа месяца (UTC).",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -1923,7 +1923,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT sum(c.usd) AS value\nFROM costs_daily c JOIN openai_projects p ON p.id = c.project\nWHERE c.service='openai' AND p.name = 'bg_coast' AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date",
+          "rawSql": "SELECT sum(c.usd) AS value FROM costs_daily c LEFT JOIN projects p ON p.service = c.service AND p.id = c.project WHERE c.service <> 'elevenlabs' AND p.pipeline AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date",
           "refId": "A"
         }
       ],
@@ -1966,7 +1966,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "description": "Месяц-к-дате проекта bg_coast, экстраполированный на весь месяц. Пусто до 5-го числа — раньше это шум.",
+      "description": "Месяц-к-дате пайплайна, экстраполированный на весь месяц. Пусто до 5-го числа.",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -1983,7 +1983,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH m AS (SELECT sum(c.usd) s, count(distinct c.day) d FROM costs_daily c JOIN openai_projects p ON p.id = c.project\n  WHERE c.service='openai' AND p.name = 'bg_coast' AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date)\nSELECT CASE WHEN d >= 5 THEN s * extract(day from (date_trunc('month', now()) + interval '1 month - 1 day')) / d END AS value FROM m",
+          "rawSql": "WITH m AS (SELECT sum(c.usd) s, count(distinct c.day) d FROM costs_daily c LEFT JOIN projects p ON p.service = c.service AND p.id = c.project WHERE c.service <> 'elevenlabs' AND p.pipeline AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date)\nSELECT CASE WHEN d >= 5 THEN s * extract(day from (date_trunc('month', now()) + interval '1 month - 1 day')) / d END AS value FROM m",
           "refId": "A"
         }
       ],
@@ -2185,7 +2185,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT c.day, c.service, c.item, c.usd, c.units, c.fetched_at\nFROM costs_daily c LEFT JOIN openai_projects p ON p.id = c.project\nWHERE c.day >= (now() AT TIME ZONE 'UTC')::date - 7\n  AND (c.service = 'elevenlabs' OR p.name = 'bg_coast')\n  AND (c.usd > 0 OR c.units > 0)\nORDER BY c.day DESC, c.service, c.item",
+          "rawSql": "SELECT c.day, c.service, c.item, c.usd, c.units, c.fetched_at\nFROM costs_daily c LEFT JOIN projects p ON p.service = c.service AND p.id = c.project\nWHERE c.day >= (now() AT TIME ZONE 'UTC')::date - 7\n  AND (c.service = 'elevenlabs' OR p.pipeline)\n  AND (c.usd > 0 OR c.units > 0)\nORDER BY c.day DESC, c.service, c.item",
           "refId": "A"
         }
       ],

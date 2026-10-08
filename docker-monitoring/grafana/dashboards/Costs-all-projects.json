@@ -28,7 +28,7 @@
       },
       "id": 1,
       "panels": [],
-      "title": "OpenAI — все проекты организации",
+      "title": "AI-провайдеры — все проекты (OpenAI, Anthropic, OpenRouter, DeepSeek)",
       "type": "row"
     },
     {
@@ -36,9 +36,9 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "id": 2,
-      "title": "По проектам, $/день",
-      "description": "Стеком по проектам организации OpenAI; имена — из openai_projects (id, если проекта нет). Фильтр — «Проект OpenAI» вверху.",
+      "id": 10,
+      "title": "По провайдерам, $/день",
+      "description": "Стеком по провайдеру. Фильтры «Провайдер» и «Проект» вверху.",
       "gridPos": {
         "h": 9,
         "w": 12,
@@ -55,7 +55,212 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT c.day AS time, coalesce(p.name, c.project) AS metric, sum(c.usd) AS value\nFROM costs_daily c LEFT JOIN openai_projects p ON p.id = c.project\nWHERE c.service='openai' AND c.project IN (${oai_project:sqlstring}) AND $__timeFilter(c.day)\nGROUP BY 1, 2 HAVING sum(c.usd) > 0 ORDER BY 1",
+          "rawSql": "SELECT c.day AS time, c.service AS metric, sum(c.usd) AS value\nFROM costs_daily c LEFT JOIN projects p ON p.service = c.service AND p.id = c.project\nWHERE c.service <> 'elevenlabs' AND c.service IN (${provider:sqlstring}) AND ('__all' IN (${project:sqlstring}) OR c.service || ':' || c.project IN (${project:sqlstring})) AND $__timeFilter(c.day)\nGROUP BY 1, 2 HAVING sum(c.usd) > 0 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "axisPlacement": "auto",
+            "showPoints": "never"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "costs-postgres"
+      },
+      "id": 11,
+      "title": "Месяц-к-дате по провайдерам, $",
+      "description": "Итог текущего месяца по каждому провайдеру.",
+      "type": "bargauge",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "costs-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT c.service AS metric, sum(c.usd) AS value FROM costs_daily c LEFT JOIN projects p ON p.service = c.service AND p.id = c.project WHERE c.service <> 'elevenlabs' AND c.service IN (${provider:sqlstring}) AND ('__all' IN (${project:sqlstring}) OR c.service || ':' || c.project IN (${project:sqlstring})) AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date GROUP BY 1 HAVING sum(c.usd) > 0 ORDER BY 2 DESC",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "valueMode": "color",
+        "namePlacement": "left"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "costs-postgres"
+      },
+      "id": 12,
+      "title": "Остаток баланса, $",
+      "description": "Последний снимок quota_snapshot.balance_usd для провайдеров с пополняемым балансом (DeepSeek, OpenRouter). Жёлтый ниже $10, красный ниже $5.",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "costs-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT DISTINCT ON (service) service AS metric, balance_usd AS value FROM quota_snapshot WHERE balance_usd IS NOT NULL ORDER BY service, taken_at DESC",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "green",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none",
+        "orientation": "horizontal"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      }
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "costs-postgres"
+      },
+      "id": 2,
+      "title": "По провайдерам и проектам, $/день",
+      "description": "Стеком по «провайдер · проект». Имена — из таблицы projects; без имени — id проекта, а если его нет — название провайдера. DeepSeek: item balance_delta — дневная убыль баланса.",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "costs-postgres"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT c.day AS time, c.service || ' · ' || coalesce(p.name, nullif(c.project, ''), c.service) AS metric, sum(c.usd) AS value\nFROM costs_daily c LEFT JOIN projects p ON p.service = c.service AND p.id = c.project\nWHERE c.service <> 'elevenlabs' AND c.service IN (${provider:sqlstring}) AND ('__all' IN (${project:sqlstring}) OR c.service || ':' || c.project IN (${project:sqlstring})) AND $__timeFilter(c.day)\nGROUP BY 1, 2 HAVING sum(c.usd) > 0 ORDER BY 1",
           "refId": "A"
         }
       ],
@@ -111,12 +316,12 @@
       },
       "id": 3,
       "title": "По проектам и моделям, $/день",
-      "description": "Серии «проект · модель» — модели разных проектов не сливаются. Модели без расходов не показываются.",
+      "description": "Серии «провайдер · проект · модель» — ничего не сливается. Модели без расходов не показываются.",
       "gridPos": {
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 1
+        "y": 10
       },
       "type": "timeseries",
       "targets": [
@@ -128,7 +333,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT c.day AS time, coalesce(p.name, c.project) || ' · ' || regexp_replace(c.item, ',\\s*.*$', '') AS metric, sum(c.usd) AS value\nFROM costs_daily c LEFT JOIN openai_projects p ON p.id = c.project\nWHERE c.service='openai' AND c.project IN (${oai_project:sqlstring}) AND $__timeFilter(c.day)\nGROUP BY 1, 2 HAVING sum(c.usd) > 0 ORDER BY 1",
+          "rawSql": "SELECT c.day AS time, c.service || ' · ' || coalesce(p.name, nullif(c.project, ''), c.service) || ' · ' || regexp_replace(c.item, ',\\s*.*$', '') AS metric, sum(c.usd) AS value\nFROM costs_daily c LEFT JOIN projects p ON p.service = c.service AND p.id = c.project\nWHERE c.service <> 'elevenlabs' AND c.service IN (${provider:sqlstring}) AND ('__all' IN (${project:sqlstring}) OR c.service || ':' || c.project IN (${project:sqlstring})) AND $__timeFilter(c.day)\nGROUP BY 1, 2 HAVING sum(c.usd) > 0 ORDER BY 1",
           "refId": "A"
         }
       ],
@@ -182,12 +387,12 @@
         "type": "grafana-postgresql-datasource",
         "uid": "costs-postgres"
       },
-      "description": "OpenAI с 1-го числа месяца (UTC) по выбранным проектам.",
+      "description": "Все выбранные AI-провайдеры и проекты с 1-го числа месяца (UTC). ElevenLabs — отдельной строкой ниже.",
       "gridPos": {
         "h": 8,
         "w": 6,
         "x": 0,
-        "y": 10
+        "y": 19
       },
       "id": 4,
       "targets": [
@@ -199,7 +404,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT sum(c.usd) AS value FROM costs_daily c WHERE c.service='openai' AND c.project IN (${oai_project:sqlstring}) AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date",
+          "rawSql": "SELECT sum(c.usd) AS value FROM costs_daily c LEFT JOIN projects p ON p.service = c.service AND p.id = c.project WHERE c.service <> 'elevenlabs' AND c.service IN (${provider:sqlstring}) AND ('__all' IN (${project:sqlstring}) OR c.service || ':' || c.project IN (${project:sqlstring})) AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date",
           "refId": "A"
         }
       ],
@@ -247,7 +452,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 10
+        "y": 19
       },
       "id": 5,
       "targets": [
@@ -259,7 +464,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH m AS (SELECT sum(c.usd) s, count(distinct c.day) d FROM costs_daily c WHERE c.service='openai' AND c.project IN (${oai_project:sqlstring}) AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date)\nSELECT CASE WHEN d >= 5 THEN s * extract(day from (date_trunc('month', now()) + interval '1 month - 1 day')) / d END AS value FROM m",
+          "rawSql": "WITH m AS (SELECT sum(c.usd) s, count(distinct c.day) d FROM costs_daily c LEFT JOIN projects p ON p.service = c.service AND p.id = c.project WHERE c.service <> 'elevenlabs' AND c.service IN (${provider:sqlstring}) AND ('__all' IN (${project:sqlstring}) OR c.service || ':' || c.project IN (${project:sqlstring})) AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date)\nSELECT CASE WHEN d >= 5 THEN s * extract(day from (date_trunc('month', now()) + interval '1 month - 1 day')) / d END AS value FROM m",
           "refId": "A"
         }
       ],
@@ -303,13 +508,13 @@
         "uid": "costs-postgres"
       },
       "id": 6,
-      "title": "Месяц-к-дате по проектам и моделям",
+      "title": "Месяц-к-дате по провайдерам, проектам и моделям",
       "description": "Итог текущего месяца, строки с нулевой суммой скрыты.",
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 10
+        "y": 19
       },
       "type": "table",
       "targets": [
@@ -321,7 +526,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT coalesce(p.name, c.project) AS \"Проект\", regexp_replace(c.item, ',\\s*.*$', '') AS \"Модель\", round(sum(c.usd), 4) AS \"$\"\nFROM costs_daily c LEFT JOIN openai_projects p ON p.id = c.project\nWHERE c.service='openai' AND c.project IN (${oai_project:sqlstring}) AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date\nGROUP BY 1, 2 HAVING sum(c.usd) > 0 ORDER BY 3 DESC",
+          "rawSql": "SELECT c.service AS \"Провайдер\", coalesce(p.name, nullif(c.project, ''), c.service) AS \"Проект\", regexp_replace(c.item, ',\\s*.*$', '') AS \"Модель\", round(sum(c.usd), 4) AS \"$\"\nFROM costs_daily c LEFT JOIN projects p ON p.service = c.service AND p.id = c.project\nWHERE c.service <> 'elevenlabs' AND c.service IN (${provider:sqlstring}) AND ('__all' IN (${project:sqlstring}) OR c.service || ':' || c.project IN (${project:sqlstring})) AND c.day >= date_trunc('month', (now() AT TIME ZONE 'UTC')::date)::date\nGROUP BY 1, 2, 3 HAVING sum(c.usd) > 0 ORDER BY 4 DESC",
           "refId": "A"
         }
       ],
@@ -358,7 +563,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 18
+        "y": 27
       },
       "id": 7,
       "panels": [],
@@ -375,7 +580,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 19
+        "y": 28
       },
       "id": 9,
       "targets": [
@@ -448,7 +653,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 19
+        "y": 28
       },
       "id": 8,
       "targets": [
@@ -511,33 +716,36 @@
   "refresh": "1h",
   "schemaVersion": 39,
   "tags": [
+    "anthropic",
     "costs",
+    "deepseek",
+    "elevenlabs",
     "openai",
-    "elevenlabs"
+    "openrouter"
   ],
   "time": {
     "from": "now-30d",
     "to": "now"
   },
   "timezone": "browser",
-  "title": "Расходы — все проекты",
+  "title": "Расходы — все провайдеры и проекты",
   "uid": "costs-all-projects",
   "templating": {
     "list": [
       {
-        "name": "oai_project",
-        "label": "Проект OpenAI",
+        "name": "provider",
+        "label": "Провайдер",
         "type": "query",
         "datasource": {
           "type": "grafana-postgresql-datasource",
           "uid": "costs-postgres"
         },
-        "definition": "SELECT name AS __text, id AS __value FROM openai_projects ORDER BY name",
-        "query": "SELECT name AS __text, id AS __value FROM openai_projects ORDER BY name",
+        "definition": "SELECT DISTINCT service FROM costs_daily WHERE service <> 'elevenlabs' ORDER BY 1",
+        "query": "SELECT DISTINCT service FROM costs_daily WHERE service <> 'elevenlabs' ORDER BY 1",
         "refresh": 1,
         "multi": true,
         "includeAll": true,
-        "sort": 0,
+        "sort": 1,
         "hide": 0,
         "current": {
           "selected": true,
@@ -549,6 +757,34 @@
           ]
         },
         "options": []
+      },
+      {
+        "name": "project",
+        "label": "Проект",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "costs-postgres"
+        },
+        "definition": "SELECT service || ' · ' || name AS __text, service || ':' || id AS __value FROM projects WHERE service IN (${provider:sqlstring}) ORDER BY 1",
+        "query": "SELECT service || ' · ' || name AS __text, service || ':' || id AS __value FROM projects WHERE service IN (${provider:sqlstring}) ORDER BY 1",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "'__all'",
+        "sort": 0,
+        "hide": 0,
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": [],
+        "description": "All = '__all': SQL treats it as «no project filter», so rows of a provider with no projects entry (DeepSeek, OpenRouter) still show."
       }
     ]
   }
