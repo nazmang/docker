@@ -222,3 +222,47 @@ directory does not exist); alert on its age, not on single failed runs.
 
 Tests (no root, no bucket): `bash debian01/burgas-feed.test.sh`, plus the real
 feed with `LIVE=1`.
+
+## PostgreSQL dumps off-site
+
+`pg-offsite.sh` + `pg-offsite.{service,timer}`: once a day this host pulls the
+PostgreSQL dumps that dkr01 writes to nas01 and keeps them for 30 days in
+`/big_pool/pg-offsite`, encrypted with age. Why, and how the three backup
+layers fit together: `docker-postgres-backup/README.md`.
+
+- **Pull, read-only.** The ssh key here is forced into `pg-backup-serve.sh` on
+  dkr01, which can only list, read and hash dumps. dkr01 has no key to this
+  host, so a compromised dkr01 cannot touch these copies.
+- **No plaintext at rest.** Each dump goes through `age` to the public
+  recipient as it streams in; the private key is not on this host. The stream
+  is hashed on the way and compared with dkr01's sha256 — a mismatch is
+  discarded, not kept.
+- **Metric:** `pg_backup_offsite_newest_dump_timestamp_seconds{database}` — when
+  the newest copy held here was taken on dkr01. It goes stale both when the
+  pull stops and when dkr01 stops dumping.
+
+### Install
+
+As root (`age` from Debian 12's archive):
+
+    apt install age
+    useradd --system --no-create-home --shell /usr/sbin/nologin pgoffsite
+    zfs create -o compression=off big_pool/pg-offsite   # dumps are already compressed
+    chown pgoffsite:pgoffsite /big_pool/pg-offsite; chmod 700 /big_pool/pg-offsite
+
+    install -d -m 700 /etc/pg-offsite
+    ssh-keygen -t ed25519 -N '' -C pg-offsite@debian01 -f /etc/pg-offsite/ssh_key
+    cat /etc/pg-offsite/ssh_key.pub          # -> authorized_keys on dkr01
+    # pin dkr01's host key, after checking its fingerprint out of band:
+    ssh-keyscan -t ed25519 10.164.1.105 > /etc/pg-offsite/known_hosts
+    ssh-keygen -lf /etc/pg-offsite/known_hosts
+    chmod 600 /etc/pg-offsite/*
+
+    install -m 755 pg-offsite.sh /usr/local/bin/
+    install -m 644 pg-offsite.service pg-offsite.timer /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl start pg-offsite.service && journalctl -u pg-offsite -n 30   # first pull: ~2.3 GB
+    systemctl enable --now pg-offsite.timer
+
+Test without root: `docker-postgres-backup/pg-backup.test.sh` covers this script
+with a stand-in for ssh.
