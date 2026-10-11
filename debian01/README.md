@@ -172,12 +172,9 @@ the unit runs as a `DynamicUser`.
 sudo install -m 755 burgas-feed.sh /usr/local/bin/burgas-feed.sh
 sudo install -m 644 burgas-feed.service burgas-feed.timer /etc/systemd/system/
 
-sudo install -d -m 700 /etc/burgas-feed
-sudo tee /etc/burgas-feed/credentials > /dev/null <<'CONF'
-AWS_ACCESS_KEY_ID=bgcn-feed-writer
-AWS_SECRET_ACCESS_KEY=<secret>
-CONF
-sudo chmod 600 /etc/burgas-feed/credentials     # root:root
+sudo install -d -m 700 -o root -g root /etc/burgas-feed
+sudo install -m 600 -o root -g root /dev/null /etc/burgas-feed/credentials
+sudo -e /etc/burgas-feed/credentials             # two lines, see below
 
 /usr/local/bin/burgas-feed.sh --dry-run          # fetch + validate, no upload
 sudo systemctl daemon-reload
@@ -185,6 +182,18 @@ sudo systemctl enable --now burgas-feed.timer
 sudo systemctl start burgas-feed.service         # run once immediately
 journalctl -u burgas-feed -n 20 --no-pager
 ```
+
+The credentials file holds two lines:
+
+```
+AWS_ACCESS_KEY_ID=bgcn-feed-writer
+AWS_SECRET_ACCESS_KEY=<secret>
+```
+
+Type the secret in the editor (`sudo -e`), not in a `tee`/heredoc in an
+interactive shell — that lands in `~/.bash_history`. Copying a prepared file
+from a laptop works too:
+`scp credentials debian01:/tmp/ && ssh debian01 'sudo install -m 600 -o root -g root /tmp/credentials /etc/burgas-feed/credentials && shred -u /tmp/credentials'`.
 
 After a successful run the unit writes
 `burgas_feed_last_success_timestamp_seconds` to

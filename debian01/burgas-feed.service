@@ -1,6 +1,6 @@
 [Unit]
 Description=Mirror the Burgas municipality news RSS into the bg-coast-news bucket
-Documentation=file:///opt/host-health/README.md
+Documentation=https://github.com/nazmang/docker/blob/master/debian01/README.md#burgas-news-feed-mirror
 After=network-online.target
 Wants=network-online.target
 
@@ -16,7 +16,8 @@ TimeoutStartSec=120
 ProtectSystem=strict
 ProtectHome=yes
 PrivateDevices=yes
-RestrictAddressFamilies=AF_INET AF_INET6
+# AF_UNIX: name resolution through nss-resolve/varlink needs it
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 # Prometheus textfile metric, written as root ("+") and only after a successful run:
 # the dynamic user cannot write there, and a failed run must leave the old timestamp
 # so an alert on its age fires. Skipped quietly when node_exporter is not installed.
