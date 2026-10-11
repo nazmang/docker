@@ -2055,6 +2055,17 @@ regexes = [
     '''SRC[^=]*=\s*"[a-zA-Z0-9]+''',
 ]
 
+# --- local addition (keep when regenerating from upstream) ------------------
+# burgas-feed.test.sh drives a local fake bucket with a dummy key to prove the script never logs
+# it. Allowed only as that exact value in that exact file (AND), so a real key pasted into the same
+# file, or this dummy anywhere else, is still caught. Fingerprints in .gitleaksignore cannot do this:
+# they pin a commit SHA, and a squash merge makes a new one (master c7bef28, 2026-10-11).
+[[rules.allowlists]]
+description = "burgas-feed test fixture: dummy key for the local fake bucket"
+condition = "AND"
+paths = ['''^debian01/burgas-feed\.test\.sh$''']
+regexes = ['''^s3cr3t-never-logged$''']
+
 [[rules]]
 id = "github-app-token"
 description = "Identified a GitHub App Token, which may compromise GitHub application integrations and source code security."
