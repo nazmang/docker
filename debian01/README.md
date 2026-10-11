@@ -149,3 +149,57 @@ curl -s localhost:9099/api/v1/targets | head -c 300  # the local scrape target
 
 From the Prometheus side, `count({host="debian01"})` should return a couple of
 thousand series, and `Debian01MetricsMissing` should be gone.
+
+## Burgas news feed mirror
+
+`burgas-feed.sh` + `.service` + `.timer` copy the Burgas municipality news RSS
+(`https://www.burgas.bg/bg/rss/news`) into the bg-coast-news bucket as
+`feeds/burgas.xml`, every 15 minutes. The site sits behind Cloudflare, which
+answers the Kubernetes cluster with 403; this host's home connection gets
+through, so it fetches and n8n reads the copy.
+
+The copy is replaced only by a feed that passed validation: HTTP 200, XML,
+`<rss>` root with a `<channel>` and at least one `<item>`. A Cloudflare
+challenge page, an empty feed, a 403 or a cut connection keep the last good
+copy, log the reason to the journal and fail the unit (exit 2 fetch, 3 invalid
+feed, 4 upload, 5 config). A stale feed is harmless for n8n; a broken one is not.
+
+The S3 key can only PutObject (no HEAD/GET/list). It reaches the script
+through systemd `LoadCredential=`, never through the environment or argv, and
+the unit runs as a `DynamicUser`.
+
+```bash
+sudo install -m 755 burgas-feed.sh /usr/local/bin/burgas-feed.sh
+sudo install -m 644 burgas-feed.service burgas-feed.timer /etc/systemd/system/
+
+sudo install -d -m 700 -o root -g root /etc/burgas-feed
+sudo install -m 600 -o root -g root /dev/null /etc/burgas-feed/credentials
+sudo -e /etc/burgas-feed/credentials             # two lines, see below
+
+/usr/local/bin/burgas-feed.sh --dry-run          # fetch + validate, no upload
+sudo systemctl daemon-reload
+sudo systemctl enable --now burgas-feed.timer
+sudo systemctl start burgas-feed.service         # run once immediately
+journalctl -u burgas-feed -n 20 --no-pager
+```
+
+The credentials file holds two lines:
+
+```
+AWS_ACCESS_KEY_ID=bgcn-feed-writer
+AWS_SECRET_ACCESS_KEY=<secret>
+```
+
+Type the secret in the editor (`sudo -e`), not in a `tee`/heredoc in an
+interactive shell — that lands in `~/.bash_history`. Or stream a prepared file
+from a laptop into the already-created 600 file (the secret never touches
+debian01's `/tmp` or any shell history):
+`ssh debian01 'sudo tee /etc/burgas-feed/credentials > /dev/null' < credentials`.
+
+After a successful run the unit writes
+`burgas_feed_last_success_timestamp_seconds` to
+`/var/lib/node_exporter/textfile/burgas_feed.prom` (skipped while that
+directory does not exist); alert on its age, not on single failed runs.
+
+Tests (no root, no bucket): `bash debian01/burgas-feed.test.sh`, plus the real
+feed with `LIVE=1`.

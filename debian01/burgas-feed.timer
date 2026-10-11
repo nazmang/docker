@@ -1,0 +1,12 @@
+[Unit]
+Description=Mirror the Burgas news RSS every 15 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+# Spread the requests: a fixed second every 15 minutes looks more like a bot to Cloudflare.
+RandomizedDelaySec=60
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
