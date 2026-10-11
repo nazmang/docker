@@ -191,9 +191,10 @@ AWS_SECRET_ACCESS_KEY=<secret>
 ```
 
 Type the secret in the editor (`sudo -e`), not in a `tee`/heredoc in an
-interactive shell — that lands in `~/.bash_history`. Copying a prepared file
-from a laptop works too:
-`scp credentials debian01:/tmp/ && ssh debian01 'sudo install -m 600 -o root -g root /tmp/credentials /etc/burgas-feed/credentials && shred -u /tmp/credentials'`.
+interactive shell — that lands in `~/.bash_history`. Or stream a prepared file
+from a laptop into the already-created 600 file (the secret never touches
+debian01's `/tmp` or any shell history):
+`ssh debian01 'sudo tee /etc/burgas-feed/credentials > /dev/null' < credentials`.
 
 After a successful run the unit writes
 `burgas_feed_last_success_timestamp_seconds` to
