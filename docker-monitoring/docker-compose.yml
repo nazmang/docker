@@ -104,9 +104,11 @@ services:
         # and MemoryPressure fired continuously. At the time of the move dkr03
         # had 6.3 GB available and 0 faults/s; dkr02 only ~1 GB and was paging
         # itself. Nothing here needs a manager: Swarm discovery goes through
-        # tcp://dockerproxy:2375 over the overlay network, and the TSDB lives on
-        # /data (NFS from nas01, mounted on every dkr node), so history moves
-        # with the task.
+        # tcp://dockerproxy:2375 over the overlay network.
+        #
+        # Since 2026-10-12 the TSDB is on dkr03's own disk, not on NFS (see
+        # prometheus_data below), so this constraint is now load-bearing:
+        # moving the service to another node means moving the data by hand.
         constraints:
           - "node.hostname==dkr03"
       resources:
@@ -378,12 +380,18 @@ networks:
     external: true
 
 volumes:
+  # Local disk on dkr03, not NFS (ADR-0007 in homelab-journal). The TSDB does
+  # fsync/mmap-heavy writes that NFS handles badly, and nas01 is a VM on the
+  # same RAID anyway, so NFS bought no redundancy. Old copy left at
+  # /data/prometheus_data as a fallback. Docker never updates the options of
+  # an existing named volume: changing `device` needs
+  # `docker volume rm monitoring_prometheus_data` on dkr03 with the task stopped.
   prometheus_data:
     driver: local
     driver_opts:
       type: "none"
       o: "bind"
-      device: "/data/prometheus_data"
+      device: "/var/lib/prometheus-tsdb"
   grafana:
     driver: local
     driver_opts:
