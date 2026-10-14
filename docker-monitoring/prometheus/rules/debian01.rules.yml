@@ -27,8 +27,10 @@ groups:
   - alert: Debian01NodeExporterDown
     # The agent is alive (it is pushing) but cannot scrape the host's own
     # exporter — a different fault from the host being gone, and invisible
-    # without this rule because the push keeps arriving.
-    expr: up{host="debian01"} == 0
+    # without this rule because the push keeps arriving. Only job="debian01":
+    # the agent also scrapes HA and syncthing (including the NAS on the other
+    # site), and those targets are covered by ServiceDown.
+    expr: up{host="debian01", job="debian01"} == 0
     for: 15m
     labels:
       severity: warning
