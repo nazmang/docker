@@ -16,17 +16,29 @@ The data comes from the Docker API through the existing read-only socket proxy
 Deliberately stdlib-only: it runs on a stock python:*-alpine image with the
 source delivered as a Swarm config, so there is no image to build, publish or
 keep patched.
+
+It also probes the transit Vault's /v1/sys/health (VAULT_HEALTH_URLS). That
+Vault holds the cluster Vault's unseal key and is Shamir-sealed itself; it sat
+sealed from 2026-09-24 to 2026-10-14 without a word, the cluster's token to it
+expired meanwhile, and the next restart of the cluster Vault failed. Vault's
+own metrics need a token, sys/health does not -- and this is the one in-house
+exporter already running next to it, so the probe lives here instead of a
+blackbox exporter deployed for a single target.
 """
 
 import json
 import os
 import time
+import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 DOCKER_API = os.environ.get("DOCKER_API", "http://dockerproxy:2375")
 LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "9107"))
 TIMEOUT = float(os.environ.get("DOCKER_TIMEOUT", "10"))
+# Comma-separated Vault base URLs, e.g. http://10.163.11.105:8200
+VAULT_HEALTH_URLS = [u.strip().rstrip("/") for u in
+                     os.environ.get("VAULT_HEALTH_URLS", "").split(",") if u.strip()]
 
 # States a task passes through on the way up. A task sitting in one of these is
 # not a failure yet, but it is not running either.
@@ -121,6 +133,35 @@ def collect():
     return "\n".join(lines) + "\n"
 
 
+def collect_vault():
+    """sys/health answers 200 active, 429 standby, 501 not initialized, 503
+    sealed -- with a JSON body in every case, so the body, not the status, is
+    what gets read."""
+    lines = [
+        "# HELP vault_health_up Whether Vault answered sys/health at all.",
+        "# TYPE vault_health_up gauge",
+        "# HELP vault_health_sealed 1 if Vault reports itself sealed.",
+        "# TYPE vault_health_sealed gauge",
+        "# HELP vault_health_initialized 1 if Vault reports itself initialized.",
+        "# TYPE vault_health_initialized gauge",
+    ]
+    for url in VAULT_HEALTH_URLS:
+        lbl = f'instance="{escape(url)}"'
+        try:
+            try:
+                with urllib.request.urlopen(url + "/v1/sys/health", timeout=TIMEOUT) as r:
+                    data = json.load(r)
+            except urllib.error.HTTPError as e:
+                data = json.load(e)
+            lines.append(f"vault_health_up{{{lbl}}} 1")
+            lines.append(f"vault_health_sealed{{{lbl}}} {int(bool(data.get('sealed')))}")
+            lines.append(f"vault_health_initialized{{{lbl}}} {int(bool(data.get('initialized')))}")
+        except Exception as exc:  # noqa: BLE001 -- unreachable or not Vault
+            lines.append(f"# vault {escape(url)}: {escape(exc)}")
+            lines.append(f"vault_health_up{{{lbl}}} 0")
+    return "\n".join(lines) + "\n"
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/metrics"):
@@ -134,6 +175,8 @@ class Handler(BaseHTTPRequestHandler):
                 # exporter is gone" when the truth is "the Docker API did not
                 # answer". Those want different responses.
                 body = f"# collection failed: {escape(exc)}\nswarm_exporter_up 0\n"
+            if VAULT_HEALTH_URLS:
+                body += collect_vault()
             body += f"swarm_exporter_scrape_duration_seconds {time.time() - start:.4f}\n"
             payload = body.encode()
             self.send_response(200)
