@@ -11,15 +11,20 @@
 #   echo '*/5 * * * * root /usr/local/sbin/lvm-thin-textfile.sh' > /etc/cron.d/lvm-thin-textfile
 # Output: /var/lib/prometheus/node-exporter/lvm_thin.prom (Debian default dir).
 set -eu
+# cron runs with PATH=/usr/bin:/bin; lvs lives in /usr/sbin
+PATH=/usr/sbin:/sbin:/usr/bin:/bin
 dir=/var/lib/prometheus/node-exporter
+# lvs first, outside the pipe: in a pipe its failure was lost and an empty
+# file with fresh mtime hid the problem (15.10.2026)
+pools=$(lvs --noheadings --nosuffix --separator ' ' -S 'segtype=thin-pool' \
+  -o vg_name,lv_name,data_percent,metadata_percent)
 tmp=$(mktemp "$dir/.lvm_thin.XXXXXX")
 {
   echo "# HELP pve_lvm_thin_data_percent Data space used in an LVM thin pool."
   echo "# TYPE pve_lvm_thin_data_percent gauge"
   echo "# HELP pve_lvm_thin_metadata_percent Metadata space used in an LVM thin pool."
   echo "# TYPE pve_lvm_thin_metadata_percent gauge"
-  lvs --noheadings --nosuffix --separator ' ' -S 'segtype=thin-pool' \
-      -o vg_name,lv_name,data_percent,metadata_percent |
+  printf '%s\n' "$pools" |
     while read -r vg lv data meta; do
       echo "pve_lvm_thin_data_percent{vg=\"$vg\",pool=\"$lv\"} $data"
       echo "pve_lvm_thin_metadata_percent{vg=\"$vg\",pool=\"$lv\"} $meta"
