@@ -1,0 +1,54 @@
+groups:
+
+###############################################################################
+# LVM-THIN POOLS (pve01: Proxmox CSI volumes and VM disks)
+# Source: docker-monitoring/hosts/pve01/lvm-thin-textfile.sh via textfile.
+# Data fill is also watched by Zabbix (Proxmox VE by HTTP, 80 %); metadata
+# fill is not visible there at all.
+###############################################################################
+- name: lvm_thin
+  rules:
+
+  - alert: LvmThinMetadataHigh
+    expr: pve_lvm_thin_metadata_percent > 80
+    for: 15m
+    labels:
+      severity: warning
+      category: storage
+      team: platform
+    annotations:
+      summary: "Thin-pool metadata {{ $value | humanize }}% on {{ $labels.instance }}"
+      description: "{{ $labels.vg }}/{{ $labels.pool }}: at 100 % the pool goes read-only for all its disks. lvextend --poolmetadatasize."
+
+  - alert: LvmThinMetadataCritical
+    expr: pve_lvm_thin_metadata_percent > 90
+    for: 5m
+    labels:
+      severity: critical
+      category: storage
+      team: platform
+    annotations:
+      summary: "Thin-pool metadata {{ $value | humanize }}% on {{ $labels.instance }}"
+      description: "{{ $labels.vg }}/{{ $labels.pool }}: extend metadata now (lvextend --poolmetadatasize +1G)."
+
+  - alert: LvmThinDataCritical
+    expr: pve_lvm_thin_data_percent > 90
+    for: 10m
+    labels:
+      severity: critical
+      category: storage
+      team: platform
+    annotations:
+      summary: "Thin-pool data {{ $value | humanize }}% on {{ $labels.instance }}"
+      description: "{{ $labels.vg }}/{{ $labels.pool }}: Zabbix warns at 80 %; at 100 % writes to thin disks fail."
+
+  - alert: LvmThinTextfileStale
+    expr: absent(pve_lvm_thin_metadata_percent{instance="pve01"}) or (time() - node_textfile_mtime_seconds{instance="pve01",file=~".*lvm_thin.prom"}) > 1800
+    for: 30m
+    labels:
+      severity: warning
+      category: monitoring
+      team: platform
+    annotations:
+      summary: "No fresh thin-pool metrics from pve01"
+      description: "lvm-thin-textfile.sh cron on pve01 has not written lvm_thin.prom for 30 min."
