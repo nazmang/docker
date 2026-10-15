@@ -35,7 +35,9 @@ services:
     # later and cloudflared moved to ams*. The night 502s fit the same pattern.
     # "us" is the only region cloudflared has besides global; the cost is
     # ~100 ms more to admin UIs (zbx, grafana, portainer, proxymgr, prom).
-    command: tunnel run --protocol http2 --region us
+    # --region belongs to `tunnel`, not to `run`: after `run` cloudflared
+    # prints usage and exits (15.10.2026 14:45, tunnel down ~10 min).
+    command: tunnel --region us run --protocol http2
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}
     logging:
