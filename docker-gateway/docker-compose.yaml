@@ -29,9 +29,20 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-latest}
-    command: tunnel run --protocol http2
+    # --region us: only US edges. 15.10.2026 11:16-11:33 two of four
+    # connections sat on dme05 (Moscow) while Russian DCs were down; Cloudflare
+    # answered 1033 for the whole tunnel until the edge closed them ~15 min
+    # later and cloudflared moved to ams*. The night 502s fit the same pattern.
+    # "us" is the only region cloudflared has besides global; the cost is
+    # ~100 ms more to admin UIs (zbx, grafana, portainer, proxymgr, prom).
+    command: tunnel run --protocol http2 --region us
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - gw_net
 
