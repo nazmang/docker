@@ -82,3 +82,48 @@ groups:
     annotations:
       summary: "swarm-exporter cannot read the Docker API"
       description: "The exporter is running but its calls to the socket proxy are failing, so every alert in this file is blind."
+
+- name: vault_transit
+  # The transit Vault (docker-vault-transit) holds the cluster Vault's unseal
+  # key. It is Shamir-sealed itself, so after any restart of its task it stays
+  # sealed until someone runs unseal.sh. SwarmServiceDown cannot see that: a
+  # sealed Vault is a perfectly running container. From 2026-09-24 to
+  # 2026-10-14 it sat sealed unnoticed, the cluster's token to it expired, and
+  # the cluster Vault failed to start on its next restart.
+  # Metrics come from swarm-exporter's sys/health probe (VAULT_HEALTH_URLS).
+  rules:
+
+  - alert: VaultTransitSealed
+    expr: vault_health_sealed == 1
+    for: 5m
+    labels:
+      severity: critical
+      category: availability
+      team: platform
+    annotations:
+      summary: "Transit Vault {{ $labels.instance }} is sealed"
+      description: "The cluster Vault cannot unseal on restart and its token to transit cannot be renewed. Run docker-vault-transit/unseal.sh."
+
+  - alert: VaultTransitUnreachable
+    expr: vault_health_up == 0
+    for: 10m
+    labels:
+      severity: warning
+      category: availability
+      team: platform
+    annotations:
+      summary: "Transit Vault {{ $labels.instance }} does not answer sys/health"
+      description: "swarm-exporter cannot reach {{ $labels.instance }}/v1/sys/health; the sealed check is blind."
+
+  - alert: VaultTransitMetricsMissing
+    # Guards the guard: if VAULT_HEALTH_URLS is lost from the compose file the
+    # two rules above go silent instead of firing.
+    expr: absent(vault_health_up)
+    for: 30m
+    labels:
+      severity: warning
+      category: availability
+      team: platform
+    annotations:
+      summary: "No transit Vault health metrics"
+      description: "vault_health_up is absent: swarm-exporter is down or VAULT_HEALTH_URLS is not set."

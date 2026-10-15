@@ -16,6 +16,8 @@ services:
     command: ["python", "/opt/exporter.py"]
     environment:
       - DOCKER_API=http://dockerproxy:2375
+      # transit Vault (docker-vault-transit), published on dkr01's host port
+      - VAULT_HEALTH_URLS=http://10.163.11.105:8200
     configs:
       - source: swarm_exporter_py
         target: /opt/exporter.py
@@ -44,7 +46,7 @@ services:
 configs:
   swarm_exporter_py:
     file: ./swarm-exporter/exporter.py
-    name: swarm_exporter_py_v1
+    name: swarm_exporter_py_v2
 
 networks:
   monitoring_net:
