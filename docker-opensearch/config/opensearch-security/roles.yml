@@ -504,6 +504,8 @@ fluentd_writer:
     - index_patterns:
         - "nginx-*"
         - "fluentd*"
+        # daily syslog indices since 16.10.2026 (docker-fluentd, target_index_key)
+        - "syslog-*"
       fls: []
       masked_fields: []
       allowed_actions:
