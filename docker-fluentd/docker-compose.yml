@@ -9,7 +9,7 @@ services:
       - "24224:24224"
       - "24224:24224/udp"
     volumes:
-      - fluentd-buffer:/fluentd/buffer
+      - fluentd-buffer-local:/fluentd/buffer
       - fluentd-config:/fluentd/etc/
     configs:
       - source: fluentd-config
@@ -29,12 +29,11 @@ configs:
     file: ./fluentd/fluent.conf
     name: fluentd-config_v${CONF_VERSION}
 volumes:
-  fluentd-buffer:
+  # Plain local volume on the node (not NFS): fluentd file buffers must not
+  # live on a network filesystem. A task moved to another worker starts with
+  # an empty buffer there; the old node keeps its chunks.
+  fluentd-buffer-local:
     driver: local
-    driver_opts:
-      type: "none"
-      o: "bind"
-      device: "${FLUEND_BUFFER_PATH}"
   fluentd-config:
     driver: local
     driver_opts:
