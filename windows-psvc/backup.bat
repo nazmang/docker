@@ -95,9 +95,24 @@ IF NOT EXIST "%COMPRESSED_BACKUPFILE%" (
     goto :done
 )
 
-REM Encrypt (batch, no tty, passphrase from a protected file - no agent/pinentry involved)
+REM Encrypt (batch, no tty, passphrase from a protected file, no pinentry).
+REM gpg 2.x still needs gpg-agent even with loopback pinentry. The first run after
+REM a reboot failed to autostart it on 16.10.2026 ("IPC connect call failed",
+REM exit 2), so start the agent explicitly and on exit 2 restart it and retry once.
+REM ping is the delay: timeout refuses to run with redirected input.
+"%GPGBIN%\gpgconf.exe" --launch gpg-agent >> "%LOCALLOG%" 2>&1 <nul
+SET "GPGTRY=1"
+:encrypt
 "%GPGBIN%\gpg.exe" --batch --yes --no-tty --pinentry-mode loopback --passphrase-file "%GPGPASSFILE%" --cipher-algo AES256 --symmetric --output "%ENCRYPTED_BACKUPFILE%" "%COMPRESSED_BACKUPFILE%" >> "%LOCALLOG%" 2>&1 <nul
 SET "RC=%ERRORLEVEL%"
+IF "%RC%"=="2" IF "%GPGTRY%"=="1" (
+    SET "GPGTRY=2"
+    echo %DATE% %TIME% gpg exit code 2, restarting gpg-agent and retrying >> "%LOCALLOG%"
+    "%GPGBIN%\gpgconf.exe" --kill gpg-agent >> "%LOCALLOG%" 2>&1 <nul
+    "%GPGBIN%\gpgconf.exe" --launch gpg-agent >> "%LOCALLOG%" 2>&1 <nul
+    ping -n 6 127.0.0.1 >nul 2>&1 <nul
+    goto :encrypt
+)
 SET "ENCSIZE=0"
 IF EXIST "%ENCRYPTED_BACKUPFILE%" FOR %%A IN ("%ENCRYPTED_BACKUPFILE%") DO SET "ENCSIZE=%%~zA"
 IF NOT "%RC%"=="0" (
