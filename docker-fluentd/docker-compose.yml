@@ -9,7 +9,7 @@ services:
       - "24224:24224"
       - "24224:24224/udp"
     volumes:
-      - fluentd-buffer-local:/fluentd/buffer
+      - fluentd-data:/fluentd/log
       - fluentd-config:/fluentd/etc/
     configs:
       - source: fluentd-config
@@ -32,7 +32,10 @@ volumes:
   # Plain local volume on the node (not NFS): fluentd file buffers must not
   # live on a network filesystem. A task moved to another worker starts with
   # an empty buffer there; the old node keeps its chunks.
-  fluentd-buffer-local:
+  # Mounted over /fluentd/log, which the image owns as fluent (uid 999): a new
+  # volume copies that owner. A volume over a path missing in the image is
+  # created root-owned and fluentd cannot write (16.10.2026, #80).
+  fluentd-data:
     driver: local
   fluentd-config:
     driver: local
