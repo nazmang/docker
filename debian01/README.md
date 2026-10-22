@@ -164,6 +164,25 @@ challenge page, an empty feed, a 403 or a cut connection keep the last good
 copy, log the reason to the journal and fail the unit (exit 2 fetch, 3 invalid
 feed, 4 upload, 5 config). A stale feed is harmless for n8n; a broken one is not.
 
+**Full text.** The feed's `<description>` is only a ~400-character teaser, so
+before upload the script fetches each article page once — same curl, same
+agent, same home IP as the feed; no reader services, proxies or headless
+browsers — takes the text of `<div id="content">` (without the date/author
+block and share buttons) and puts it into `<description>` as plain text, up to
+3500 characters. n8n's `Extract Article Text` already falls back to that field
+when it cannot read the page itself, so nothing changes on the n8n side.
+
+- The text is cached per guid in `/var/lib/burgas-feed` (`StateDirectory=`), so
+  an article costs one GET for its whole life in the feed; files untouched for
+  30 days are pruned.
+- At most 20 pages per run, 1–2 s apart. In steady state that is one or two
+  GETs per run — only new articles are fetched.
+- A page that fails, or yields no more text than the teaser, leaves the teaser.
+  A 403/429 also stops page fetches until the next run. A failing page goes to
+  the back of the queue and is given up after 3 tries.
+- If the rewrite itself fails, the plain feed is uploaded. `ENRICH=0` turns the
+  step off.
+
 The S3 key can only PutObject (no HEAD/GET/list). It reaches the script
 through systemd `LoadCredential=`, never through the environment or argv, and
 the unit runs as a `DynamicUser`.
@@ -176,7 +195,7 @@ sudo install -d -m 700 -o root -g root /etc/burgas-feed
 sudo install -m 600 -o root -g root /dev/null /etc/burgas-feed/credentials
 sudo -e /etc/burgas-feed/credentials             # two lines, see below
 
-/usr/local/bin/burgas-feed.sh --dry-run          # fetch + validate, no upload
+/usr/local/bin/burgas-feed.sh --dry-run          # fetch + validate + full text, no upload
 sudo systemctl daemon-reload
 sudo systemctl enable --now burgas-feed.timer
 sudo systemctl start burgas-feed.service         # run once immediately

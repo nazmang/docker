@@ -11,8 +11,11 @@ ExecStart=/usr/local/bin/burgas-feed.sh
 # $CREDENTIALS_DIRECTORY/credentials, readable only by this unit's dynamic user.
 LoadCredential=credentials:/etc/burgas-feed/credentials
 DynamicUser=yes
-# fetch 30 s + upload 60 s, with room to spare; a hung run must not overlap the next tick
-TimeoutStartSec=120
+# Full-text cache (one file per article), /var/lib/burgas-feed, writable by the dynamic user.
+StateDirectory=burgas-feed
+# feed 30 s + up to 20 article pages x (15 s + 2 s pause) + upload 60 s = 430 s worst case;
+# a hung run must not overlap the next tick
+TimeoutStartSec=600
 ProtectSystem=strict
 ProtectHome=yes
 PrivateDevices=yes
