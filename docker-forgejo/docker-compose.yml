@@ -7,8 +7,8 @@ version: "3.8"
 # service must not start, hence the bind mount (it fails if the path is gone)
 # instead of a named volume that Docker would silently create on the root disk.
 #
-# Internal only: ports are published in host mode on dkr03, which has no public
-# address. Registration is closed; accounts are created by the admin.
+# Internal only: ports 3300 (web) and 2222 (ssh) in host mode on dkr03, no public
+# address (3000 is Grafana on the ingress mesh). Registration is closed.
 #
 # SQLite, not Postgres: one user, a dozen repositories. SQLite must stay on the
 # local disk -- never NFS (ADR-0007).
@@ -21,7 +21,7 @@ services:
       - USER_GID=1000
       - FORGEJO__database__DB_TYPE=sqlite3
       - FORGEJO__server__DOMAIN=${FORGEJO_HOST:-10.164.1.107}
-      - FORGEJO__server__ROOT_URL=http://${FORGEJO_HOST:-10.164.1.107}:3000/
+      - FORGEJO__server__ROOT_URL=http://${FORGEJO_HOST:-10.164.1.107}:3300/
       - FORGEJO__server__SSH_DOMAIN=${FORGEJO_HOST:-10.164.1.107}
       - FORGEJO__server__SSH_PORT=2222
       - FORGEJO__server__SSH_LISTEN_PORT=22
@@ -38,7 +38,7 @@ services:
       - forgejo_data:/data
     ports:
       - target: 3000
-        published: 3000
+        published: 3300
         protocol: tcp
         mode: host
       - target: 22
