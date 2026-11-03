@@ -5,6 +5,7 @@ This repo contains multiple deployment files for stacks and services used in my 
 |---------------------------------------|------------------------------------------------------------|
 | [docker-ansible-semaphore](docker-ansible-semaphore/) | Ansible Semaphore for managing automation tasks.            |
 | [docker-elk](docker-elk/)             | ELK stack (Elasticsearch, Logstash, Kibana) for logging and visualization. |
+| [docker-forgejo](docker-forgejo/)     | Forgejo: private git on dkr03 (encrypted volume, internal only). |
 | [docker-gc-cron](docker-gc-cron/)     | Automated garbage collection for Docker images using cron.  |
 | [docker-homeassistant](docker-homeassistant/) | Home Assistant for home automation and smart devices.       |
 | [docker-homer](docker-homer/)         | Homer dashboard for organizing web services and tools.      |
