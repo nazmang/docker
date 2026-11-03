@@ -12,7 +12,7 @@ pipeline {
         JENKINS_AGENT_TAG = 'latest-jdk21'
         JENKINS_HOME_PATH = '/data/jenkins_home/jenkins_local'
         JENKINS_SECRET = credentials('JENKINS_AGENT_SECRET')
-        JENKINS_TAG = 'latest-jdk21'        
+        JENKINS_TAG = '2.580.2-lts-jdk21' // pinned LTS; bump deliberately
         // Telegram configre
         TELEGRAM_BOT_TOKEN = credentials('telegramToken')
         TELEGRAM_CHAT_ID = credentials('telegramChatid')             
