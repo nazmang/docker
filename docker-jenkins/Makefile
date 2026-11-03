@@ -24,15 +24,10 @@ deploy-service:
 deploy-jenkins:
 	@$(MAKE) deploy-service SERVICE=jenkins
 
-.PHONY: deploy-etcd
-deploy-etcd: 
-	@$(MAKE) deploy-service COMPOSE_FILE=etcd-compose.yml SERVICE=etcd
-
 # Deploy full Jenkins stack
 .PHONY: deploy-all
 deploy-all: init-swarm
 	@$(MAKE) deploy-jenkins 
-	@$(MAKE) deploy-etcd COMPOSE_FILE=etcd-compose.yml	
 	@echo "${STACK_NAME} stack deployed to context '$(DOCKER_CONTEXT)'."
 
 # Check the status of the services
