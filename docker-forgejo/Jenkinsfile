@@ -1,0 +1,100 @@
+def deployExecuted = false // Flag indicates when stack deploy is successful
+
+// Forgejo -- private git (ADR-0009 in homelab-journal). Data is the LUKS volume
+// /srv/forgejo on dkr03; /srv/forgejo/data must exist (uid 1000) before deploy.
+pipeline {
+    agent { label 'cloud && hetzner'  }
+    parameters {
+        booleanParam(name: 'FORCE_DEPLOY', defaultValue: false, description: 'Force deployment ignoring changeset')
+    }
+    environment {
+        DOCKER_COMPOSE_DIR = 'docker-forgejo'
+        DOCKER_STACK_NAME = 'forgejo'
+        FORGEJO_TAG = '15.0.11'
+        FORGEJO_HOST = '10.164.1.107'
+        // Telegram configre
+        TELEGRAM_BOT_TOKEN = credentials('telegramToken')
+        TELEGRAM_CHAT_ID = credentials('telegramChatid')
+    }
+
+    stages {
+        stage('Create Files') {
+            when {
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { return params.FORCE_DEPLOY }
+                }
+            }
+            steps {
+                script {
+                    def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
+                    def envContent = """
+                    FORGEJO_TAG=${env.FORGEJO_TAG}
+                    FORGEJO_HOST=${env.FORGEJO_HOST}
+                    """
+                    echo "Generated .env content:\n${envContent}"
+                    writeFile file: "${composeDir}/.env", text: envContent
+                }
+            }
+        }
+
+        stage('Deploy stack') {
+            when {
+                anyOf {
+                    changeset "**/${env.DOCKER_COMPOSE_DIR}/**"
+                    expression { return params.FORCE_DEPLOY }
+                }
+            }
+            steps {
+                script {
+                    dir("${env.DOCKER_COMPOSE_DIR}") {
+                        sh "make -f Makefile -e deploy STACK_NAME=${env.DOCKER_STACK_NAME}"
+                        env.DEPLOY_EXECUTED = 'true'
+                    }
+                    deployExecuted = true
+                    echo "Deploy executed: ${deployExecuted}"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            script{                            
+                if (deployExecuted) {
+                    def message = "✅ <b>Jenkins Deploy Success</b>\n" +
+                                  "Job: ${env.JOB_NAME}\n" +
+                                  "Build: #${env.BUILD_NUMBER}\n" +
+                                  "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                                  "URL: ${env.BUILD_URL}"
+                    sh """
+                        curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
+                        -d chat_id=${env.TELEGRAM_CHAT_ID} \
+                        -d text="${message}" \
+                        -d parse_mode=HTML
+                    """
+                } else {
+                    echo "Deploy stack was not executed, skipping Telegram notification."
+                }
+            }
+        }
+        failure {
+            script {
+                def message = "<b>❌ Jenkins Deploy Failed</b>\n" +
+                          "Job: ${env.JOB_NAME}\n" +
+                          "Build: #${env.BUILD_NUMBER}\n" +
+                          "Stack: ${env.DOCKER_STACK_NAME}\n" +
+                          "URL: <a href='${env.BUILD_URL}'>Link</a>"
+                sh """
+                    curl -s -X POST https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage \
+                    -d chat_id=${env.TELEGRAM_CHAT_ID} \
+                    -d text="${message}" \
+                    -d parse_mode=HTML
+                """
+            }
+        }
+    }
+}

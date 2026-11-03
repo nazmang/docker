@@ -1,0 +1,89 @@
+version: "3.8"
+
+# Forgejo -- private git for local-only projects (ADR-0009 in homelab-journal).
+#
+# Data lives on a dedicated LUKS2 volume on dkr03 (/srv/forgejo, sdb), unlocked
+# at boot by Clevis against Tang on debian01. Without that volume mounted the
+# service must not start, hence the bind mount (it fails if the path is gone)
+# instead of a named volume that Docker would silently create on the root disk.
+#
+# Internal only: ports are published in host mode on dkr03, which has no public
+# address. Registration is closed; accounts are created by the admin.
+#
+# SQLite, not Postgres: one user, a dozen repositories. SQLite must stay on the
+# local disk -- never NFS (ADR-0007).
+
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:${FORGEJO_TAG:-15.0.11}
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO__database__DB_TYPE=sqlite3
+      - FORGEJO__server__DOMAIN=${FORGEJO_HOST:-10.164.1.107}
+      - FORGEJO__server__ROOT_URL=http://${FORGEJO_HOST:-10.164.1.107}:3000/
+      - FORGEJO__server__SSH_DOMAIN=${FORGEJO_HOST:-10.164.1.107}
+      - FORGEJO__server__SSH_PORT=2222
+      - FORGEJO__server__SSH_LISTEN_PORT=22
+      - FORGEJO__security__INSTALL_LOCK=true
+      - FORGEJO__service__DISABLE_REGISTRATION=true
+      - FORGEJO__service__REQUIRE_SIGNIN_VIEW=true
+      - FORGEJO__repository__DEFAULT_PRIVATE=private
+      - FORGEJO__repository__FORCE_PRIVATE=true
+      - FORGEJO__metrics__ENABLED=true
+      - FORGEJO__packages__ENABLED=true
+      - FORGEJO__webhook__ALLOWED_HOST_LIST=private
+      - FORGEJO__log__LEVEL=Info
+    volumes:
+      - forgejo_data:/data
+    ports:
+      - target: 3000
+        published: 3000
+        protocol: tcp
+        mode: host
+      - target: 22
+        published: 2222
+        protocol: tcp
+        mode: host
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          # Pinned: the data is the encrypted disk of this node.
+          - node.hostname == dkr03
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+      restart_policy:
+        condition: any
+        delay: 10s
+    networks:
+      - forgejo_net
+      - monitoring_net
+    labels:
+      org.label-schema.group: "git"
+
+networks:
+  forgejo_net:
+    driver: overlay
+    attachable: true
+  monitoring_net:
+    external: true
+    name: monitoring_monitoring_net
+
+volumes:
+  forgejo_data:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "/srv/forgejo/data"
