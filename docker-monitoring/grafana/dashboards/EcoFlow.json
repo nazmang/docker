@@ -247,7 +247,7 @@
     {
       "id": 22,
       "type": "stat",
-      "title": "Delta 2 Max — здоровье / остаток",
+      "title": "Delta 2 Max — здоровье / запас",
       "gridPos": {
         "h": 7,
         "w": 6,
@@ -343,8 +343,8 @@
             "type": "prometheus",
             "uid": "gSJDeUgRz"
           },
-          "expr": "hass_sensor_duration_min{entity=\"sensor.delta_2_max_1514_discharge_remaining_time\"}",
-          "legendFormat": "Остаток разряда"
+          "expr": "hass_sensor_battery_percent{entity=\"sensor.delta_2_max_1514_main_battery_level\"} / 100 * 2048 * 0.87 * 60 / on(instance) clamp_min(hass_sensor_power_w{entity=\"sensor.delta_2_max_1514_total_out_power\"}, 1)",
+          "legendFormat": "Запас при текущей нагрузке"
         }
       ]
     },
