@@ -39,11 +39,14 @@
       "title": "STREAM — здоровье / резерв",
       "gridPos": { "h": 7, "w": 6, "x": 6, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
-      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [
+        { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 70 }, { "color": "green", "value": 85 }] } }] },
+        { "matcher": { "id": "byFrameRefID", "options": "B" }, "properties": [{ "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }] }
+      ] },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "horizontal" },
       "targets": [
         { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
-          "expr": "hass_sensor_battery_percent{entity=\"sensor.stream_max_5982_state_of_health\"}",
+          "expr": "hass_sensor_unit_percent{entity=\"sensor.stream_max_5982_state_of_health\"}",
           "legendFormat": "Health" },
         { "refId": "B", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
           "expr": "hass_number_state_percent{entity=\"number.stream_max_5982_backup_reserve_level\"}",
@@ -148,12 +151,12 @@
       "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "horizontal" },
       "fieldConfig": { "defaults": {}, "overrides": [
-        { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "unit", "value": "percent" }] },
-        { "matcher": { "id": "byFrameRefID", "options": "B" }, "properties": [{ "id": "unit", "value": "m" }] }
+        { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "unit", "value": "percent" }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 70 }, { "color": "green", "value": 85 }] } }] },
+        { "matcher": { "id": "byFrameRefID", "options": "B" }, "properties": [{ "id": "unit", "value": "m" }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }] }
       ] },
       "targets": [
         { "refId": "A", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
-          "expr": "hass_sensor_battery_percent{entity=\"sensor.river_3_plus_state_of_health\"}",
+          "expr": "hass_sensor_unit_percent{entity=\"sensor.river_3_plus_state_of_health\"}",
           "legendFormat": "Health" },
         { "refId": "B", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
           "expr": "hass_sensor_duration_min{entity=\"sensor.river_3_plus_discharge_remaining_time\"}",
@@ -275,7 +278,27 @@
               {
                 "id": "unit",
                 "value": "percent"
-              }
+              },
+              {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "red",
+                        "value": null
+                      },
+                      {
+                        "color": "orange",
+                        "value": 70
+                      },
+                      {
+                        "color": "green",
+                        "value": 85
+                      }
+                    ]
+                  }
+                }
             ]
           },
           {
@@ -287,7 +310,19 @@
               {
                 "id": "unit",
                 "value": "m"
-              }
+              },
+              {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": null
+                      }
+                    ]
+                  }
+                }
             ]
           }
         ]
