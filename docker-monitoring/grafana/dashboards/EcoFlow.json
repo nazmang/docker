@@ -299,7 +299,7 @@
             "type": "prometheus",
             "uid": "gSJDeUgRz"
           },
-          "expr": "hass_sensor_battery_percent{entity=\"sensor.delta_2_max_1514_state_of_health\"}",
+          "expr": "hass_sensor_unit_percent{entity=\"sensor.delta_2_max_1514_state_of_health\"}",
           "legendFormat": "Health"
         },
         {
