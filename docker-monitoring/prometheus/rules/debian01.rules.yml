@@ -191,3 +191,53 @@ groups:
     annotations:
       summary: "debian01: метрика о резервных копиях пропала"
       description: "Нет ни одной серии borg_backup_last_success_timestamp_seconds. Либо host-health.sh не запускается, либо /var/log/omv-backup.log стал нечитаем, либо node-exporter потерял textfile-каталог."
+
+# Delta 2 Max питает площадку 1. Данные идут через облако EcoFlow и HA на
+# debian01, поэтому без связи серии замирают или пропадают: за это отвечает
+# Site1StationDataMissing. Сам обрыв света ловит Zabbix, здесь важен запас.
+- name: site1-station
+  rules:
+
+  - alert: Site1StationOnBattery
+    expr: hass_sensor_voltage_v{entity="sensor.delta_2_max_1514_ac_in_volts"} < 100
+    for: 5m
+    labels:
+      severity: warning
+      category: power
+      team: platform
+    annotations:
+      summary: "Площадка 1: станция работает от батареи"
+      description: "На входе Delta 2 Max нет сети. Заряд {{ with query \"hass_sensor_battery_percent{entity='sensor.delta_2_max_1514_main_battery_level'}\" }}{{ . | first | value | humanize }}{{ end }} %."
+
+  - alert: Site1StationBatteryLow
+    expr: hass_sensor_battery_percent{entity="sensor.delta_2_max_1514_main_battery_level"} < 30
+    for: 5m
+    labels:
+      severity: warning
+      category: power
+      team: platform
+    annotations:
+      summary: "Площадка 1: заряд станции {{ $value | humanize }} %"
+      description: "Заряд Delta 2 Max ниже 30 %."
+
+  - alert: Site1StationBatteryCritical
+    expr: hass_sensor_battery_percent{entity="sensor.delta_2_max_1514_main_battery_level"} < 15
+    for: 2m
+    labels:
+      severity: critical
+      category: power
+      team: platform
+    annotations:
+      summary: "Площадка 1: заряд станции {{ $value | humanize }} %"
+      description: "Станция отключит выход на 10 %. Погасите NAS штатно, пока он доступен."
+
+  - alert: Site1StationDataMissing
+    expr: absent(hass_sensor_battery_percent{entity="sensor.delta_2_max_1514_main_battery_level"})
+    for: 30m
+    labels:
+      severity: warning
+      category: availability
+      team: platform
+    annotations:
+      summary: "Нет данных со станции площадки 1"
+      description: "Метрик Delta 2 Max нет 30 минут. Проверьте HA, prom-agent и облако EcoFlow."

@@ -178,6 +178,217 @@
         { "refId": "D", "datasource": { "type": "prometheus", "uid": "gSJDeUgRz" },
           "expr": "hass_sensor_power_w{entity=\"sensor.river_3_plus_dc_out_power\"}", "legendFormat": "DC выход (прикуриватель)" }
       ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Delta 2 Max (площадка 1)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      }
+    },
+    {
+      "id": 21,
+      "type": "gauge",
+      "title": "Delta 2 Max — заряд (SOC)",
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 33
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gSJDeUgRz"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 20
+              },
+              {
+                "color": "green",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gSJDeUgRz"
+          },
+          "expr": "hass_sensor_battery_percent{entity=\"sensor.delta_2_max_1514_main_battery_level\"}",
+          "legendFormat": "SOC"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "stat",
+      "title": "Delta 2 Max — здоровье / остаток",
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 6,
+        "y": 33
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gSJDeUgRz"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "horizontal"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "m"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gSJDeUgRz"
+          },
+          "expr": "hass_sensor_battery_percent{entity=\"sensor.delta_2_max_1514_state_of_health\"}",
+          "legendFormat": "Health"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gSJDeUgRz"
+          },
+          "expr": "hass_sensor_duration_min{entity=\"sensor.delta_2_max_1514_discharge_remaining_time\"}",
+          "legendFormat": "Остаток разряда"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Delta 2 Max — потоки мощности",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 33
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gSJDeUgRz"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gSJDeUgRz"
+          },
+          "expr": "hass_sensor_power_w{entity=\"sensor.delta_2_max_1514_total_in_power\"}",
+          "legendFormat": "Вход всего"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gSJDeUgRz"
+          },
+          "expr": "hass_sensor_power_w{entity=\"sensor.delta_2_max_1514_total_out_power\"}",
+          "legendFormat": "Выход всего"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gSJDeUgRz"
+          },
+          "expr": "hass_sensor_power_w{entity=\"sensor.delta_2_max_1514_ac_out_power\"}",
+          "legendFormat": "AC выход"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gSJDeUgRz"
+          },
+          "expr": "hass_sensor_power_w{entity=\"sensor.delta_2_max_1514_dc_out_power\"}",
+          "legendFormat": "DC выход (прикуриватель)"
+        }
+      ]
     }
   ]
 }
