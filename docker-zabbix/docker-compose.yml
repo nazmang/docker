@@ -86,7 +86,7 @@ services:
       - POSTGRES_PASSWORD               
 
   zabbix-server:
-    image: zabbix/zabbix-server-pgsql:alpine-6.4-latest
+    image: zabbix/zabbix-server-pgsql:alpine-7.0.32
     deploy:
       restart_policy:
         condition: any
@@ -136,10 +136,10 @@ services:
         tag: zabbix  
 
   zabbix-web:
-    image: zabbix/zabbix-web-nginx-pgsql:6.4-alpine-latest
+    image: zabbix/zabbix-web-nginx-pgsql:alpine-7.0.32
     environment:      
       ZBX_SERVER_HOST: zabbix-server
-      PHP_TZ: Europe/Kiev
+      PHP_TZ: Europe/Sofia
     env_file:
       - start.env  
     secrets:
