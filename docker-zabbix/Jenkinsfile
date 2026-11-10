@@ -49,6 +49,7 @@ pipeline {
                     DB_SERVER_PORT=5432
                     ZBX_SERVER_HOST=zabbix-server
                     ZBX_STARTVMWARECOLLECTORS=1
+                    ZBX_VALUECACHESIZE=64M
                     PHP_TZ=Europe/Sofia
                     PGUSER=${params.POSTGRES_USER}
                     PGHOST=${params.POSTGRES_HOST}
