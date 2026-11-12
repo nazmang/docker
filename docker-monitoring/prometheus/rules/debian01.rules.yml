@@ -199,13 +199,18 @@ groups:
   rules:
 
   # По мощности, а не по напряжению: 12.11.2026 датчик ac_in_volts застыл на
-  # 165 В в момент отключения и порога < 100 не увидел. На сети вход всегда
-  # больше нуля (станция работает на проход), за 7 дней минимум 118 Вт.
+  # 165 В в момент отключения и порога < 100 не увидел.
+  # total_in_power, а не ac_in_power: 12.11.2026 после возврата света (17:19)
+  # ac_in_power остался 0 больше двух часов при total_in_power 1890 → 121 Вт.
+  # Условие «заряд не растёт»: данные EcoFlow приходят в HA пачками раз в
+  # ~15 минут, и SOC успевает вырасти раньше, чем обновится мощность входа.
   - alert: Site1StationOnBattery
     expr: |
-      (hass_sensor_power_w{entity="sensor.delta_2_max_1514_ac_in_power"} == 0)
+      (hass_sensor_power_w{entity="sensor.delta_2_max_1514_total_in_power"} == 0)
       and on()
       (hass_sensor_power_w{entity="sensor.delta_2_max_1514_total_out_power"} > 0)
+      and on()
+      (delta(hass_sensor_battery_percent{entity="sensor.delta_2_max_1514_battery_level_soc"}[30m]) <= 0)
     for: 5m
     labels:
       severity: warning
