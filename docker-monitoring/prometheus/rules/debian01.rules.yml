@@ -198,8 +198,14 @@ groups:
 - name: site1-station
   rules:
 
+  # По мощности, а не по напряжению: 12.11.2026 датчик ac_in_volts застыл на
+  # 165 В в момент отключения и порога < 100 не увидел. На сети вход всегда
+  # больше нуля (станция работает на проход), за 7 дней минимум 118 Вт.
   - alert: Site1StationOnBattery
-    expr: hass_sensor_voltage_v{entity="sensor.delta_2_max_1514_ac_in_volts"} < 100
+    expr: |
+      (hass_sensor_power_w{entity="sensor.delta_2_max_1514_ac_in_power"} == 0)
+      and on()
+      (hass_sensor_power_w{entity="sensor.delta_2_max_1514_total_out_power"} > 0)
     for: 5m
     labels:
       severity: warning
