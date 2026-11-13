@@ -20,7 +20,11 @@ groups:
   rules:
 
   - alert: VeeamJobFailed
-    expr: veeam_job_last_result != 0
+    # Only a verdict actually read from the log: a non-zero finish timestamp.
+    # result=2 with timestamp 0 means "no verdict found", not "failed" -- on
+    # 2026-11-13 that state fired this rule as critical at 01:56, at night, on
+    # a run that finished Success at 02:45. Unknown has its own rule below.
+    expr: (veeam_job_last_result != 0) and on(job_name) (veeam_job_last_finish_timestamp_seconds > 0)
     for: 15m
     labels:
       severity: critical
@@ -33,7 +37,9 @@ groups:
   - alert: VeeamJobStale
     # The job runs at 00:30. Twenty-six hours means one missed night is reported
     # and not two.
-    expr: time() - veeam_job_last_finish_timestamp_seconds > 26 * 3600
+    # Timestamp 0 is "no verdict found" and belongs to VeeamJobVerdictUnknown;
+    # here it read as "56 years stale".
+    expr: (time() - veeam_job_last_finish_timestamp_seconds > 26 * 3600) and on(job_name) (veeam_job_last_finish_timestamp_seconds > 0)
     for: 30m
     labels:
       severity: critical
@@ -42,6 +48,49 @@ groups:
     annotations:
       summary: "Задание Veeam {{ $labels.job_name }} не отрабатывало более суток"
       description: "Последнее завершение — {{ $value | humanizeDuration }} назад."
+
+  - alert: VeeamJobVerdictUnknown
+    # The collector found no completed session in any retained log. Not a
+    # success either -- so it still alerts, but as a warning, and not while a
+    # run is in progress (a run in progress is the normal reason, see
+    # veeam-metrics.ps1). `unless` against an absent veeam_job_running keeps
+    # the rule working with a collector older than that metric.
+    expr: (veeam_job_last_finish_timestamp_seconds == 0) unless on(job_name) (veeam_job_running == 1)
+    for: 2h
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Veeam {{ $labels.job_name }}: в журналах нет итога ни одного запуска"
+      description: "Сборщик не нашёл строку о завершении сессии ни в текущем, ни в ротированных журналах. Это не провал и не успех — проверить итог в консоли Veeam на psvc."
+
+  - alert: VeeamJobVerdictUnknown
+    # The same state a day on is no longer a quirk of log rotation: there has
+    # been no provable backup for over a day. Same weight as VeeamJobStale.
+    expr: (veeam_job_last_finish_timestamp_seconds == 0) unless on(job_name) (veeam_job_running == 1)
+    for: 26h
+    labels:
+      severity: critical
+      category: backup
+      team: platform
+    annotations:
+      summary: "Veeam {{ $labels.job_name }}: больше суток нет подтверждённого бэкапа"
+      description: "Итог запуска не найден в журналах уже 26 часов. Проверить задание в консоли Veeam на psvc."
+
+  - alert: VeeamJobRunningTooLong
+    # Usual run is about an hour; 2h15m on 2026-11-13 is the longest seen.
+    # Five hours means it is stuck or the upload has degraded badly -- worth a
+    # look in the morning, not a wake-up.
+    expr: (time() - veeam_job_running_since_timestamp_seconds > 5 * 3600) and on(job_name) (veeam_job_running_since_timestamp_seconds > 0) and on(job_name) (veeam_job_running == 1)
+    for: 15m
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Veeam {{ $labels.job_name }} идёт дольше 5 часов"
+      description: "Запуск начат {{ $value | humanizeDuration }} назад и не завершился. Обычно — около часа."
 
   - alert: VeeamEncryptionKeyErrors
     # THE RULE THIS FILE EXISTS FOR. It fires while the job is green, because
