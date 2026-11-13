@@ -23,6 +23,15 @@ could not see the backup chain at all, though the files were on the storage box.
 collects three things that fail independently: whether the job finished, when it
 finished, and whether it logged key or metadata errors regardless of its verdict.
 
+A run in progress is reported separately (`veeam_job_running`,
+`veeam_job_running_since_timestamp_seconds`), and when the current log holds no
+verdict the last completed session is taken from the rotated generations. A
+finish timestamp of 0 means "no verdict found anywhere" and is alerted on as
+`VeeamJobVerdictUnknown` (warning, critical after 26 h), not as a failure. Before
+2026-11-13 that state fired `VeeamJobFailed` and `VeeamJobStale` as critical, at
+night, on a run that was still going and later finished Success. Rule tests:
+`docker-monitoring/prometheus/tests/veeam.test.yml`.
+
 ### Installation on the host
 
 windows_exporter, with the textfile collector and only the collectors worth

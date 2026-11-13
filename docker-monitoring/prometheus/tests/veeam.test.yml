@@ -1,0 +1,60 @@
+# promtool test rules docker-monitoring/prometheus/tests/veeam.test.yml
+# (run from this directory: cd docker-monitoring/prometheus/tests).
+rule_files: [../rules/veeam.rules.yml]
+evaluation_interval: 1m
+tests:
+# Tonight: running, no verdict found yet (ts=0). Nothing must fire in 3h.
+- interval: 1m
+  input_series:
+  - {series: 'veeam_job_last_result{job_name="Bases backup"}', values: '2x200'}
+  - {series: 'veeam_job_last_finish_timestamp_seconds{job_name="Bases backup"}', values: '0x200'}
+  - {series: 'veeam_job_running{job_name="Bases backup"}', values: '1x200'}
+  - {series: 'veeam_job_running_since_timestamp_seconds{job_name="Bases backup"}', values: '0x200'}
+  alert_rule_test:
+  - {eval_time: 3h, alertname: VeeamJobFailed, exp_alerts: []}
+  - {eval_time: 3h, alertname: VeeamJobStale, exp_alerts: []}
+  - {eval_time: 3h, alertname: VeeamJobVerdictUnknown, exp_alerts: []}
+# Old collector (no running metric), ts=0: warning after 2h, no critical.
+- interval: 1m
+  input_series:
+  - {series: 'veeam_job_last_result{job_name="Bases_backup"}', values: '2x200'}
+  - {series: 'veeam_job_last_finish_timestamp_seconds{job_name="Bases_backup"}', values: '0x200'}
+  alert_rule_test:
+  - {eval_time: 3h, alertname: VeeamJobFailed, exp_alerts: []}
+  - {eval_time: 3h, alertname: VeeamJobStale, exp_alerts: []}
+  - eval_time: 3h
+    alertname: VeeamJobVerdictUnknown
+    exp_alerts:
+    - exp_labels: {severity: warning, category: backup, team: platform, job_name: Bases_backup}
+      exp_annotations:
+        summary: "Veeam Bases_backup: в журналах нет итога ни одного запуска"
+        description: "Сборщик не нашёл строку о завершении сессии ни в текущем, ни в ротированных журналах. Это не провал и не успех — проверить итог в консоли Veeam на psvc."
+# Real failure with a timestamp: critical.
+- interval: 1m
+  input_series:
+  - {series: 'veeam_job_last_result{job_name="Bases backup"}', values: '2x60'}
+  - {series: 'veeam_job_last_finish_timestamp_seconds{job_name="Bases backup"}', values: '60x60'}
+  alert_rule_test:
+  - eval_time: 30m
+    alertname: VeeamJobFailed
+    exp_alerts:
+    - exp_labels: {severity: critical, category: backup, team: platform, job_name: Bases backup}
+      exp_annotations:
+        summary: "Задание Veeam Bases backup завершилось неуспешно"
+        description: "Последний запуск вернул код 2 (0 — успех, 1 — с предупреждениями, 2 — отказ либо результат не удалось определить)."
+# Stuck run: started at t=60s, still running after 6h -> warning.
+- interval: 5m
+  input_series:
+  - {series: 'veeam_job_last_result{job_name="Bases backup"}', values: '0x100'}
+  - {series: 'veeam_job_last_finish_timestamp_seconds{job_name="Bases backup"}', values: '1x100'}
+  - {series: 'veeam_job_running{job_name="Bases backup"}', values: '1x100'}
+  - {series: 'veeam_job_running_since_timestamp_seconds{job_name="Bases backup"}', values: '60x100'}
+  alert_rule_test:
+  - {eval_time: 4h, alertname: VeeamJobRunningTooLong, exp_alerts: []}
+  - eval_time: 6h
+    alertname: VeeamJobRunningTooLong
+    exp_alerts:
+    - exp_labels: {severity: warning, category: backup, team: platform, job_name: Bases backup}
+      exp_annotations:
+        summary: "Veeam Bases backup идёт дольше 5 часов"
+        description: "Запуск начат 5h 59m 0s назад и не завершился. Обычно — около часа."
