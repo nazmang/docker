@@ -10,6 +10,9 @@ pipeline {
     environment {
         CLOUDFLARED_TAG = '2025.11.1'  // what runs in prod since 12.12.2025
         NGINX_PXY_MANAGER_TAG = '2.17.1'  // nginx2root backports (OpenResty 1.31.8.1), 19.11.2026
+        // Bind paths of the existing volumes on dkr01 (docker volume inspect, 19.11.2026)
+        NGINXP_DATA_PATH = '/data/nginx-proxymgr-data'
+        NGINXP_LETSENCRYPT_PATH = '/data/nginx-proxymgr-data/letsencrypt'
         DOCKER_COMPOSE_DIR = 'docker-gateway'
         DOCKER_STACK_NAME = 'gateway'
         ETCD_DATA_PATH = '/data/etcd_data'        
@@ -39,6 +42,8 @@ pipeline {
                     def envContent = """
                     CLOUDFLARED_TAG=${env.CLOUDFLARED_TAG}
                     NGINX_PXY_MANAGER_TAG=${env.NGINX_PXY_MANAGER_TAG}
+                    NGINXP_DATA_PATH=${env.NGINXP_DATA_PATH}
+                    NGINXP_LETSENCRYPT_PATH=${env.NGINXP_LETSENCRYPT_PATH}
                     LETSENCRYPT_EMAIL="${env.LETSENCRYPT_EMAIL}"
                     LETSENCRYPT_HOST="${env.LETSENCRYPT_HOST}"
                     TUNNEL_TOKEN="${safeTunnelToken}"

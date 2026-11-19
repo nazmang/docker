@@ -1,7 +1,8 @@
 # Variables
 STACK_NAME := gateway
 COMPOSE_FILE := docker-compose.yaml
-DOCKER_CONTEXT ?= pve  # Default context if not specified
+# The Jenkins agent runs on the Swarm manager itself; "pve" exists only on the laptop.
+DOCKER_CONTEXT ?= default
 
 # Default target
 .PHONY: all
