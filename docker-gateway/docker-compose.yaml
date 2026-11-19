@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   gateway:
-    image: "jc21/nginx-proxy-manager:${NGINX_PXY_MANAGER_TAG:-latest}"
+    image: "jc21/nginx-proxy-manager:${NGINX_PXY_MANAGER_TAG:-2.17.1}"
     restart: unless-stopped
     environment:
       PUID: 1000
