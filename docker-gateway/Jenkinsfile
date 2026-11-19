@@ -34,7 +34,6 @@ pipeline {
             steps {
                 script {
                     def composeDir = "${env.WORKSPACE}/${env.DOCKER_COMPOSE_DIR}"
-                    writeFile file: "${composeDir}/secret-file", text: env.JENKINS_SECRET
 
                     def safeTunnelToken = env.TUNNEL_TOKEN.replaceAll('\n', '\\\\n').replaceAll(':', '\\:')
                     def envContent = """
