@@ -506,6 +506,8 @@ fluentd_writer:
         - "fluentd*"
         # daily syslog indices since 16.10.2026 (docker-fluentd, target_index_key)
         - "syslog-*"
+        # kgateway (Envoy) access logs from the k8s cluster, 30 days (ISM envoy-access-30d)
+        - "envoy-*"
       fls: []
       masked_fields: []
       allowed_actions:
