@@ -7,7 +7,7 @@ pipeline {
     agent { label 'cloud && hetzner' } // Ensure the agent has Docker and Swarm mode enabled
     parameters {
         booleanParam(name: 'FORCE_DEPLOY', defaultValue: false, description: 'Force deployment ignoring changeset')
-        choice(name: 'DEPLOY_MODE', choices: ['single', 'cluster'], description: 'Deploy single-node or 2-node cluster')
+        choice(name: 'DEPLOY_MODE', choices: ['cluster', 'single'], description: 'Deploy 2-node cluster (default; push builds use it) or single-node')
     }
     environment {
         // Define environment variables for the stack
