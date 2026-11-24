@@ -96,11 +96,14 @@ while read -r name size; do
     rm -f "$fifo"; mkfifo -m 600 "$fifo"
     sha256sum < "$fifo" | cut -d' ' -f1 > "$tmp.sha" &
     hasher=$!
-    "${SSH[@]}" get "$name" | tee "$fifo" | age -r "$RECIPIENT" -o "$tmp"
+    # </dev/null on every ssh in this loop: ssh reads stdin, and stdin here is
+    # the listing. Without it the first get swallows the rest of the list and
+    # the run "succeeds" with one dump (24.11.2026, first run on debian01).
+    "${SSH[@]}" get "$name" </dev/null | tee "$fifo" | age -r "$RECIPIENT" -o "$tmp"
     st=("${PIPESTATUS[@]}")
     wait "$hasher"
     got=$(cat "$tmp.sha" 2>/dev/null)
-    want=$("${SSH[@]}" sum "$name")
+    want=$("${SSH[@]}" sum "$name" </dev/null)
     if [[ "${st[*]}" == "0 0 0" && -n "$got" && "$got" == "$want" ]]; then
         mv "$tmp" "$out"
         log "$name: $size bytes, sha256 ok"

@@ -77,8 +77,10 @@ check "no throwaway container left" '[[ -z "$($DOCKER ps -aq --filter name=pg-re
 age-keygen -o "$T/age.key" 2>/dev/null
 R=$(age-keygen -y "$T/age.key")
 mkdir -p "$T/off" "$T/offtf"
+# Drains stdin like real ssh does, so a loop that feeds ssh its own input fails here.
 cat > "$T/fake-ssh" <<FAKE
 #!/usr/bin/env bash
+[[ -t 0 ]] || timeout 2 cat >/dev/null
 SSH_ORIGINAL_COMMAND="\$*" PG_BACKUP_DEST="$T/src" exec "$SERVE"
 FAKE
 chmod +x "$T/fake-ssh"
