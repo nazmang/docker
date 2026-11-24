@@ -1,0 +1,37 @@
+[Unit]
+Description=Pull dkr01's PostgreSQL dumps off-site, encrypted with age
+Documentation=https://github.com/nazmang/docker/blob/master/debian01/README.md#postgresql-dumps-off-site
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/pg-offsite.sh
+# A fixed user, not DynamicUser: it owns the big_pool dataset the copies live in.
+User=pgoffsite
+Group=pgoffsite
+Environment=PG_OFFSITE_HOST=pgoffsite@10.164.1.105
+Environment=PG_OFFSITE_DIR=/big_pool/pg-offsite
+Environment=PG_OFFSITE_KEEP_DAYS=30
+# The same age recipient as the argocd-apps and docker SOPS files. Public key;
+# the private one is not on this host.
+Environment=PG_OFFSITE_AGE_RECIPIENT=age1wp7n5rlrjdqjx7hpkfv35ejwauuggyncl0cu4zllcq59a696sudqnucqfe
+# ssh key (forced to pg-backup-serve.sh on dkr01) and the pinned dkr01 host key:
+# root:root 600 on disk, readable only by this unit as $CREDENTIALS_DIRECTORY/*.
+LoadCredential=ssh_key:/etc/pg-offsite/ssh_key
+LoadCredential=known_hosts:/etc/pg-offsite/known_hosts
+# First run pulls the whole 14-day set (~2.3 GB over the tunnel); later runs one
+# night's worth.
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle
+ProtectSystem=strict
+ReadWritePaths=/big_pool/pg-offsite
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Metric written as root ("+"), only after a successful run: a failed run leaves
+# the old timestamp so the age alert fires.
+ExecStartPost=+/usr/local/bin/pg-offsite.sh --write-metric

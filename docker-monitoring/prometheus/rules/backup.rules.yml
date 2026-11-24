@@ -71,3 +71,63 @@ groups:
     annotations:
       summary: "Копия {{ $labels.database }} внезапно уменьшилась вдвое"
       description: "Текущий дамп {{ $value | humanize1024 }}B против вчерашнего. Проверьте, не выгружается ли пустая или частичная база."
+
+  # --- Restore test (pg-restore-test.sh on dkr01, Sundays) -------------------
+  #
+  # pg_restore --list in pg-backup.sh proves a dump is a readable archive, not
+  # that it goes back into a server. The weekly test restores the newest dump of
+  # each database into a throwaway container; these rules notice when it stops
+  # passing. Eight days = one missed Sunday plus a day.
+
+  - alert: PostgresRestoreTestStale
+    expr: time() - pg_backup_restore_test_last_success_timestamp_seconds > 8 * 86400
+    for: 1h
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Проверка восстановления {{ $labels.database }} не проходила больше недели"
+      description: "Последний успешный тестовый restore был {{ $value | humanizeDuration }} назад. Дампы делаются, но восстанавливаются ли они — неизвестно. Смотрите /var/log/pg-restore-test.log на dkr01."
+
+  - alert: PostgresRestoreTestMetricMissing
+    # Same reason as PostgresBackupMetricMissing: a vanished series evaluates to
+    # nothing. A day of grace covers the first week after install.
+    expr: absent(pg_backup_restore_test_last_success_timestamp_seconds)
+    for: 1d
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Метрика проверки восстановления Postgres пропала"
+      description: "Ни одной серии pg_backup_restore_test_last_success_timestamp_seconds. Либо pg-restore-test.sh не запускается, либо node-exporter на dkr01 не читает textfile-каталог."
+
+  # --- Off-site copy (pg-offsite.sh on debian01, daily) ----------------------
+  #
+  # The metric is the time the newest dump HELD off-site was taken on dkr01, not
+  # the time the copy ran. So it goes stale both when the copy stops and when
+  # dkr01 stops producing dumps -- either way the off-site set stops moving.
+  # 30 hours: a dump at 02:30 UTC, pulled at ~04:15 UTC, plus a day of slack.
+
+  - alert: PostgresOffsiteBackupStale
+    expr: time() - pg_backup_offsite_newest_dump_timestamp_seconds > 30 * 3600
+    for: 1h
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Внешняя копия {{ $labels.database }} отстаёт больше суток"
+      description: "Самый свежий дамп на debian01 снят {{ $value | humanizeDuration }} назад. Смотрите journalctl -u pg-offsite на debian01."
+
+  - alert: PostgresOffsiteBackupMetricMissing
+    expr: absent(pg_backup_offsite_newest_dump_timestamp_seconds)
+    for: 1d
+    labels:
+      severity: warning
+      category: backup
+      team: platform
+    annotations:
+      summary: "Метрика внешней копии Postgres пропала"
+      description: "Ни одной серии pg_backup_offsite_newest_dump_timestamp_seconds с debian01. Пока это так, о внешней копии неизвестно ничего."

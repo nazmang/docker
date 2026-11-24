@@ -1,0 +1,12 @@
+[Unit]
+Description=Pull dkr01's PostgreSQL dumps off-site daily
+
+[Timer]
+# pg-backup.sh runs at 02:30 UTC (05:30 Sofia) and takes a minute or two.
+# 07:15 Sofia leaves room for a slow night.
+OnCalendar=*-*-* 07:15:00 Europe/Sofia
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
