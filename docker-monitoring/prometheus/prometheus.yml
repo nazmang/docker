@@ -19,6 +19,7 @@ rule_files:
   - "rules/debian01.rules.yml"
   - "rules/alertmanager.rules.yml"
   - "rules/pgdump.rules.yml"
+  - "rules/pg01.rules.yml"
 
 # A scrape configuration containing exactly one endpoint to scrape.
 scrape_configs:
@@ -105,6 +106,17 @@ scrape_configs:
         labels:
           instance: "pve01"
           role: "hypervisor"
+      # Standalone PostgreSQL 16 VM on pve01 (app database outside the
+      # cluster). node_exporter also carries pg_backup_*/pg_dump_* from the
+      # textfile collector, see rules/pg01.rules.yml.
+      - targets: ["10.163.11.110:9100"]
+        labels:
+          instance: "pg01"
+          role: "database"
+      - targets: ["10.163.11.110:9187"]
+        labels:
+          instance: "pg01"
+          role: "postgres-exporter"
 
   - job_name: "prometheus"
     scrape_interval: 20s
