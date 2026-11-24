@@ -165,6 +165,9 @@ services:
       - source: prom_rules_alertmanager
         target: /etc/prometheus/rules/alertmanager.rules.yml
         mode: 0444
+      - source: prom_rules_pg01
+        target: /etc/prometheus/rules/pg01.rules.yml
+        mode: 0444
       - source: prom_rules_lvm
         target: /etc/prometheus/rules/lvm.rules.yml
         mode: 0444
@@ -323,6 +326,9 @@ configs:
   prom_rules_pgdump:
     file: ./prometheus/rules/pgdump.rules.yml
     name: prom_rules_pgdump_${PROM_CONFIG_VERSION:-manual}
+  prom_rules_pg01:
+    file: ./prometheus/rules/pg01.rules.yml
+    name: prom_rules_pg01_${PROM_CONFIG_VERSION:-manual}
   prom_rules_debian01:
     file: ./prometheus/rules/debian01.rules.yml
     name: prom_rules_debian01_${PROM_CONFIG_VERSION:-manual}
