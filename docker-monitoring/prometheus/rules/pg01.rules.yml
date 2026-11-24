@@ -1,0 +1,62 @@
+# pg01: standalone PostgreSQL 16 on pve01. Backups are pgBackRest (WAL archive,
+# full Sun / diff Mon-Sat 04:00) plus a nightly gpg pg_dump at 04:30, both on a
+# Storage Box subaccount. Metrics come from the node_exporter textfile collector
+# (pg-backup-metrics, every 10 min). As with pgdump.rules.yml, "the job ran" is
+# not the signal -- age and size are. PostgreSQLDown (postgres.alert.rules.yml)
+# already covers pg_up for this instance.
+groups:
+  - name: pg01-backup
+    rules:
+      - alert: Pg01BackupStale
+        expr: time() - max by (instance) (pg_backup_last_stop_timestamp_seconds{instance="pg01"}) > 26 * 3600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "pg01: newest pgBackRest backup is older than 26h"
+          description: "Last backup finished {{ $value | humanizeDuration }} ago. Check pgbackrest-diff/full.service on pg01."
+
+      - alert: Pg01BackupMetricsMissing
+        expr: absent(pg_backup_info_ok{instance="pg01"}) or pg_backup_info_ok{instance="pg01"} == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "pg01: pgbackrest info fails or backup metrics are missing"
+          description: "pg-backup-metrics.timer cannot read the repo (Storage Box reachable? key? cipher pass?)."
+
+      - alert: Pg01BackupRepoUnhealthy
+        expr: pg_backup_status_ok{instance="pg01"} == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "pg01: pgBackRest stanza status is not ok"
+
+      - alert: Pg01WalArchiveFailing
+        expr: increase(pg_wal_archive_failed_total{instance="pg01"}[30m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "pg01: WAL archiving to the Storage Box is failing"
+          description: "archive_command errors pile up WAL in pg_wal and will fill the data disk."
+
+      - alert: Pg01DumpStale
+        expr: time() - pg_dump_last_success_timestamp_seconds{instance="pg01"} > 26 * 3600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "pg01: no successful encrypted pg_dump in 26h"
+          description: "Last dump {{ $value | humanizeDuration }} ago. See journalctl -u pg-dump-offsite on pg01."
+
+      - alert: Pg01DumpTooSmall
+        # 300 B while appdb is empty; raise to 1024 together with MIN_BYTES
+        # in pg-dump-offsite.service after the data move.
+        expr: pg_dump_last_size_bytes{instance="pg01"} < 300
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "pg01: last encrypted dump is suspiciously small ({{ $value }} B)"
